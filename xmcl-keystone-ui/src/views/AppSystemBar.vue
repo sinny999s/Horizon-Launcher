@@ -53,15 +53,9 @@
       v-if="!noUser"
       v-shared-tooltip.bottom="() => t('commandPalette.openHint', { shortcut: paletteShortcut })"
       icon="search"
-      :text="t('commandPalette.open')"
       :aria-label="t('commandPalette.openHint', { shortcut: paletteShortcut })"
-      can-hide-text
       @click="openPalette"
-    >
-      <template #append>
-        <kbd class="palette-hotkey">{{ paletteShortcut }}</kbd>
-      </template>
-    </AppSystemBarBadge>
+    />
 
 
     <AppSystemBarBadge
@@ -72,14 +66,15 @@
       :text="taskInlineText"
       @click="showTaskDialog()"
     />
+    <!-- Horizon Client: no tutorial button. -->
     <AppSystemBarBadge
-      v-if="tutor"
+      v-if="false"
       id="tutor-button"
       v-shared-tooltip.bottom="() => t('tutorial.tooltip')"
       icon="quiz"
       :text="t('help')"
       can-hide-text
-      @click="tutor.start()"
+      @click="tutor?.start()"
     />
     <AppSystemBarBadge
       v-if="false && !noDebug"
@@ -231,13 +226,21 @@ const windowControlsAriaLabel = 'Window controls'
   appearance: none;
 }
 
+.system-btn { color: var(--hz-t3); }
 .system-btn:hover {
-  background: rgba(255, 255, 255, 0.5);
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--hz-t1);
 }
 
 .system-btn--close:hover {
-  background: rgb(209, 12, 12);
+  background: #e23b3b;
+  color: #fff;
 }
+
+/* Horizon Client: icon-only badges, quiet until hovered. */
+:deep(.system-bar-badge) { color: var(--hz-t3); border-radius: 8px !important; height: 26px; }
+:deep(.system-bar-badge:hover) { color: var(--hz-t1); background: var(--hz-fill2); }
+:deep(.system-bar-badge .badge-icon) { font-size: 18px !important; }
 
 .system-bar-back-btn:hover {
   background: rgba(255, 255, 255, 0.2);

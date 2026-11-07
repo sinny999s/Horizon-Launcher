@@ -38,6 +38,22 @@ The repo pins pnpm 11.10.0 and its scripts call `pnpm` again, so a global pnpm 1
 - Theme defaults (`composables/theme.ts`) and Vuetify's dark palette are Horizon's. On first start a build switches to
   Horizon's theme once (`localStorage.horizonTheme`); the XMCL import no longer copies XMCL's theme.
 - XMCL's Feedback button is hidden (it reports to XMCL).
+- Horizon's own pages (in `xmcl-keystone-ui/src/views/`), built on XMCL's data and install logic:
+  - `HomeHeader.vue`: instance icon, name, versions, Play button (`HorizonPlayButton.vue`) and a tab bar
+    (Overview, Mods, Worlds, Resource packs, Shaders, Settings).
+  - `Home.vue`: the Overview (hero card with Play and the instance's numbers, enabled mods, latest worlds).
+  - `HorizonContent.vue`: Mods, Resource packs and Shaders. Installed files as ClickGUI module cards with a toggle,
+    and "Browse Modrinth" (this Minecraft version, Fabric for mods) with one-click install and dependencies.
+  - `HorizonWorlds.vue`: world cards with show folder, duplicate and delete.
+  - `HorizonAccounts.vue`: XMCL's skin panel plus an account list (switch, add, remove).
+  - XMCL's original pages stay at `/mods-classic`, `/resourcepacks-classic`, `/shaderpacks-classic`, `/save-classic`
+    (the "Tools" buttons), for updates, dependency checks, import/export.
+- The sidebar's "Browse mods" opens Modrinth in the current instance. XMCL's store, news and "Play together"
+  (XMCL's paid P2P service) are no longer in the sidebar.
+- CurseForge is off (`composables/search.ts`): its API needs a key that XMCL builds in at release time.
+- The title bar has icon-only buttons (search, tasks) and no tutorial. The New instance dialog has just a name, the
+  versions and a one-line Fabric note. English strings say "Horizon Client" instead of "XMCL" except for XMCL's own
+  services.
 
 **Only Fabric, Minecraft 26.3+** (`xmcl-runtime-api/src/horizon.ts`)
 - The Minecraft list holds releases from 26.3 up that Fabric's meta lists. Snapshots and older versions are hidden.

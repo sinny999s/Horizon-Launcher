@@ -159,3 +159,130 @@ html { --highlight-color: #f5f5f7; }
   background: linear-gradient(135deg, var(--hz-a1), var(--hz-a2)) !important;
   opacity: 1;
 }
+
+/* ════════════════════════════════════════════════════════════════════════════════════════════════
+   Horizon building blocks, shared by the Horizon pages (HomeHeader, Home, HorizonMods...): the ClickGUI
+   mockup's title, segmented control, cards, chips, buttons and search field.
+   ════════════════════════════════════════════════════════════════════════════════════════════════ */
+.hz-page { padding: 0 28px 28px; font-family: var(--hz-font); color: var(--hz-t1); }
+
+.hz-h1 { font: 700 26px/1.1 var(--hz-font); letter-spacing: -.4px; color: var(--hz-t1); margin: 0; }
+.hz-sub { font: 500 12.5px var(--hz-font); color: var(--hz-t3); margin-top: 5px; }
+.hz-sub b { color: rgba(255, 170, 170, .95); font-weight: 600; }
+.hz-label { font: 700 10px var(--hz-font); letter-spacing: 1.1px; text-transform: uppercase; color: var(--hz-t4); }
+.hz-h2 { font: 600 14.5px var(--hz-font); letter-spacing: -.1px; color: var(--hz-t1); margin: 0; }
+
+/* Segmented control (.seg in the mockup). */
+.hz-seg { position: relative; display: inline-flex; background: rgba(0, 0, 0, .25); border: 1px solid var(--hz-line); border-radius: 11px; padding: 3px; gap: 2px; }
+.hz-seg > a, .hz-seg > button {
+  appearance: none; border: 0; background: none; cursor: pointer; text-decoration: none;
+  height: 28px; padding: 0 13px; display: inline-flex; align-items: center; gap: 6px;
+  font: 500 12.5px var(--hz-font); color: var(--hz-t3); border-radius: 8px; white-space: nowrap;
+  transition: color .25s, background .25s;
+}
+.hz-seg > a:hover, .hz-seg > button:hover { color: var(--hz-t1); }
+.hz-seg > a.on, .hz-seg > button.on { color: #fff; background: rgba(255, 255, 255, .1); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .08); }
+.hz-seg .v-icon { font-size: 16px !important; }
+
+/* Cards (.card in the mockup). */
+.hz-card {
+  position: relative; border-radius: 15px; padding: 14px 16px; overflow: hidden;
+  background: rgba(255, 255, 255, .032); border: 1px solid rgba(255, 255, 255, .065);
+  transition: background .3s, border-color .3s, transform .35s var(--hz-expo);
+}
+.hz-card.click { cursor: pointer; }
+.hz-card.click:hover { background: rgba(255, 255, 255, .05); border-color: rgba(255, 255, 255, .12); transform: translateY(-2px); }
+.hz-card.on {
+  background: linear-gradient(135deg, rgba(244, 56, 56, .17), rgba(239, 71, 71, .05) 70%), rgba(255, 255, 255, .03);
+  border-color: rgba(244, 56, 56, .28);
+}
+.hz-card.on::after { content: ''; position: absolute; left: 16px; right: 16px; top: 0; height: 1px; background: linear-gradient(90deg, transparent, rgba(255, 150, 150, .9), transparent); }
+
+/* Chips (.chip). */
+.hz-chip { height: 20px; padding: 0 7px; border-radius: 6px; font: 600 10.5px var(--hz-font); display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; color: var(--hz-t3); background: var(--hz-fill); border: 1px solid var(--hz-line); }
+.hz-chip.red { color: #ff9a9a; background: rgba(244, 56, 56, .12); border-color: rgba(244, 56, 56, .22); }
+.hz-chip.green { color: #7fe3a8; background: rgba(52, 215, 123, .1); border-color: rgba(52, 215, 123, .2); }
+
+/* Buttons. */
+.hz-btn {
+  appearance: none; border: 0; cursor: pointer; text-decoration: none;
+  height: 34px; padding: 0 14px; border-radius: 10px; display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+  font: 600 12.5px var(--hz-font); color: var(--hz-t1); background: var(--hz-fill2); box-shadow: inset 0 0 0 1px var(--hz-line);
+  transition: background .2s, box-shadow .2s, color .2s, transform .3s var(--hz-expo);
+}
+.hz-btn:hover { background: rgba(255, 255, 255, .11); }
+.hz-btn:disabled { opacity: .45; cursor: default; }
+.hz-btn.red { color: #fff; background: linear-gradient(135deg, var(--hz-a1), var(--hz-a2)); box-shadow: 0 4px 16px -6px var(--hz-glow), inset 0 1px 0 rgba(255, 255, 255, .2); }
+.hz-btn.red:hover { filter: brightness(1.07); }
+.hz-btn.ghost { background: none; box-shadow: none; color: var(--hz-t2); }
+.hz-btn.ghost:hover { background: var(--hz-fill); color: var(--hz-t1); }
+.hz-btn .v-icon { font-size: 17px !important; }
+.hz-icon-btn { width: 34px; padding: 0; }
+
+/* Search field (#search). */
+.hz-search { position: relative; display: flex; align-items: center; }
+.hz-search input {
+  width: 100%; height: 36px; border-radius: 11px; padding: 0 12px 0 36px; outline: none;
+  background: rgba(0, 0, 0, .25); border: 1px solid var(--hz-line2); color: var(--hz-t1); font: 500 13px var(--hz-font);
+  transition: border-color .25s, background .25s, box-shadow .25s;
+}
+.hz-search input::placeholder { color: var(--hz-t3); }
+.hz-search input:focus { border-color: rgba(255, 255, 255, .25); background: rgba(0, 0, 0, .35); box-shadow: 0 0 0 4px rgba(255, 255, 255, .04); }
+.hz-search > .v-icon { position: absolute; left: 11px; color: var(--hz-t3); font-size: 18px !important; pointer-events: none; }
+
+/* Toggle (the ClickGUI's switch). */
+.hz-toggle { appearance: none; border: 0; cursor: pointer; flex: none; position: relative; width: 34px; height: 20px; border-radius: 10px; background: rgba(255, 255, 255, .1); transition: background .3s; }
+.hz-toggle::after { content: ''; position: absolute; left: 3px; top: 3px; width: 14px; height: 14px; border-radius: 50%; background: rgba(255, 255, 255, .7); transition: transform .35s var(--hz-spring), background .3s; }
+.hz-toggle.on { background: linear-gradient(135deg, var(--hz-a1), var(--hz-a2)); box-shadow: 0 0 12px -2px var(--hz-glow); }
+.hz-toggle.on::after { transform: translateX(14px); background: #fff; }
+
+/* XMCL's per-page header rows under the Horizon header: keep their search fields, drop their stat rows and
+   their own launch buttons (the header has the Play button). */
+.hz-head-ext .home-metadata-box,
+.hz-head-ext .avatar-item-list,
+.hz-head-ext div:has(> div > .launch-pill),
+.hz-head-ext div:has(> .launch-pill) { display: none !important; }
+
+/* ── XMCL's settings pages (global and instance): Horizon cards, grey section icons, white selection ── */
+.surface-card-subsection {
+  background: rgba(255, 255, 255, .032) !important;
+  border: 1px solid rgba(255, 255, 255, .065) !important;
+  border-radius: 15px !important;
+  box-shadow: none !important;
+}
+.surface-card-subsection .v-card-title { font: 600 15px var(--hz-font); letter-spacing: -.1px; }
+.surface-card-subsection .v-card-title .v-icon,
+.v-heading h3 .v-icon,
+.setting-item .v-icon.text-primary { color: var(--hz-t3) !important; }
+.v-heading h3 { font: 700 20px var(--hz-font) !important; letter-spacing: -.3px; }
+.setting-item__title { font: 600 13.5px var(--hz-font) !important; }
+.setting-item__description, .setting-item .v-list-item-subtitle { font: 500 12px/1.4 var(--hz-font) !important; color: var(--hz-t3) !important; opacity: 1 !important; }
+.v-list-subheader { font: 700 10px var(--hz-font) !important; letter-spacing: 1.1px !important; color: var(--hz-t4) !important; }
+
+/* Selected rows in lists and navs: a white glass pill (as in the sidebar), not XMCL's red tint. */
+.v-list-item--active.text-primary, .v-list-item--active { color: #fff !important; }
+.v-list-item--active > .v-list-item__overlay { background: #fff !important; opacity: .07 !important; }
+.v-list-item--active .v-icon { color: #fff !important; }
+.v-list-item.v-list-item--active::before, .v-list-item--active .v-list-item__prepend > .v-icon ~ * { border: 0; }
+
+/* Checkboxes: Horizon's red when ticked. */
+.v-checkbox .v-selection-control--dirty .v-icon,
+.v-selection-control--dirty .v-selection-control__input > .v-icon { color: var(--hz-a1) !important; }
+
+/* Accounts page: the account list replaces XMCL's switcher above the skin. */
+.hz-accounts__skin .profile-header { display: none !important; }
+.hz-accounts__skin .skin-cape-card { margin-top: 16px !important; }
+
+/* No accent bars on selected rows (the owner's rule for Horizon's menus). */
+.base-setting-nav-indicator { display: none !important; }
+/* XMCL's page rows under the header collapse when everything in them is hidden. */
+.hz-head-ext { min-height: 0 !important; margin-bottom: 0 !important; }
+.hz-head-ext:not(:has(input, .v-btn:not([style*="display: none"]))) { display: none !important; }
+
+/* New-instance dialog: the one-line loader note that replaces XMCL's loader cards. */
+.hz-create-note {
+  display: flex; align-items: center; gap: 10px; margin: 4px 0 18px; padding: 10px 12px; border-radius: 11px;
+  background: rgba(255, 255, 255, .035); border: 1px solid var(--hz-line); font: 500 12.5px var(--hz-font); color: var(--hz-t2);
+}
+.hz-create-note b { color: var(--hz-t1); font-weight: 600; }
+.hz-create-note img { image-rendering: pixelated; }

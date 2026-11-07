@@ -30,7 +30,9 @@ export function useSearchModel(runtime: Ref<RuntimeVersions>) {
   // Provider visibility is a launcher-wide preference, not an instance
   // filter. Keep it in local storage so changing it for one instance is
   // reflected by every market page and survives instance switches/restarts.
-  const isCurseforgeActive = useLocalStorage('marketCurseforgeActive', true, { writeDefaults: false })
+  // Horizon Client: CurseForge's API needs a key that XMCL builds in at release time; ours has none, so
+  // CurseForge stays off and every search uses Modrinth (Fabric's main source anyway).
+  const isCurseforgeActive = ref(false)
   const isModrinthActive = useLocalStorage('marketModrinthActive', true, { writeDefaults: false })
   const source = ref('remote' as 'local' | 'remote' | 'favorite')
   const notRemote = computed(() => source.value !== 'remote')

@@ -5,18 +5,9 @@
       NeoForge, Quilt, OptiFine, LabyMod and local versions are not offered. The Minecraft list only has
       releases from 26.3 on that Fabric supports (see filterHorizonMinecraftVersions).
     -->
-    <div class="text-sm font-bold opacity-70 my-4">{{ t('modrinth.categories.modloader') }}</div>
-    <div class="flex flex-wrap gap-3 mb-6 items-center justify-center">
-      <v-card
-        data-testid="modloader-tab-fabric"
-        variant="outlined"
-        color="primary"
-        class="flex-1 min-w-[80px] max-w-[120px] flex flex-col items-center justify-center py-4 border-2"
-        :style="{ borderColor: 'rgba(var(--v-theme-primary), 1)' }"
-      >
-        <img :src="BuiltinImages.fabric" width="36" height="36" class="mb-2" />
-        <span class="text-xs font-semibold">Fabric</span>
-      </v-card>
+    <div data-testid="modloader-tab-fabric" class="hz-create-note">
+      <img :src="BuiltinImages.fabric" width="22" height="22">
+      <span><b>Fabric</b> with Horizon, Fabric API and Fabric Language Kotlin, added for you.</span>
     </div>
 
     <VersionInputMinecraft

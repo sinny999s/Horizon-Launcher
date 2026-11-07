@@ -2,10 +2,12 @@ import BaseSetting from '@/views/BaseSetting.vue'
 import BaseSettingActions from '@/views/BaseSettingActions.vue'
 import BaseSettingExtension from '@/views/BaseSettingExtension.vue'
 import Home from '@/views/Home.vue'
+import HorizonContent from '@/views/HorizonContent.vue'
+import HorizonAccounts from '@/views/HorizonAccounts.vue'
+import HorizonWorlds from '@/views/HorizonWorlds.vue'
 import HomeActions from '@/views/HomeActions.vue'
 import HomeExtension from '@/views/HomeExtension.vue'
 import HomeLayout from '@/views/HomeLayout.vue'
-import Me from '@/views/Me.vue'
 import Mod from '@/views/Mod.vue'
 import ModActions from '@/views/ModActions.vue'
 import ModExtension from '@/views/ModExtension.vue'
@@ -40,14 +42,35 @@ export const router = createRouter({
         },
         {
           path: 'save',
+          components: { default: HorizonWorlds },
+        },
+        {
+          path: 'save-classic',
           components: {
             default: Save,
             extensions: SaveExtension,
             actions: SaveActions,
           },
         },
+        // Horizon Client: Horizon's own Mods, Resource packs and Shaders pages. XMCL's pages stay reachable at
+        // *-classic (the Mods page links there for updates and dependency checks).
         {
           path: 'mods',
+          components: { default: HorizonContent },
+          props: { default: { kind: 'mod' } },
+        },
+        {
+          path: 'resourcepacks',
+          components: { default: HorizonContent },
+          props: { default: { kind: 'resourcepack' } },
+        },
+        {
+          path: 'shaderpacks',
+          components: { default: HorizonContent },
+          props: { default: { kind: 'shader' } },
+        },
+        {
+          path: 'mods-classic',
           components: {
             default: Mod,
             extensions: ModExtension,
@@ -55,7 +78,7 @@ export const router = createRouter({
           },
         },
         {
-          path: 'resourcepacks',
+          path: 'resourcepacks-classic',
           components: {
             default: ResourcePack,
             extensions: ResourcePackExtension,
@@ -63,7 +86,7 @@ export const router = createRouter({
           },
         },
         {
-          path: 'shaderpacks',
+          path: 'shaderpacks-classic',
           components: {
             default: ShaderPack,
             extensions: ShaderPackExtension,
@@ -128,7 +151,7 @@ export const router = createRouter({
     },
     {
       path: '/me',
-      component: Me,
+      component: HorizonAccounts,
       meta: { workspaceSidePanel: true },
     },
     {

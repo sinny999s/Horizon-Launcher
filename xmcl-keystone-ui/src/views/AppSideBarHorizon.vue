@@ -99,7 +99,6 @@ import { useDialog } from '@/composables/dialog'
 import { useDragAutoScroll } from '@/composables/dragAutoScroll'
 import { useInstanceGroup } from '@/composables/instanceGroup'
 import { AddInstanceDialogKey } from '@/composables/instanceTemplates'
-import { kMultiplayerEntry } from '@/composables/multiplayerEntry'
 import { kUserContext } from '@/composables/user'
 import { vRovingTabindex } from '@/directives/rovingTabindex'
 import { vSharedTooltip } from '@/directives/sharedTooltip'
@@ -112,19 +111,17 @@ const { t } = useI18n()
 const router = useRouter()
 const route = useRoute()
 const { gameProfile, userProfile } = injection(kUserContext)
-const { request: openMultiplayer } = injection(kMultiplayerEntry)
 const { show: showAddInstance } = useDialog(AddInstanceDialogKey)
 const { groups } = useInstanceGroup()
 
 /** XMCL's instance groups, flattened: the sidebar lists every instance in its saved order. */
 const instancePaths = computed(() => groups.value.flatMap(g => typeof g === 'string' ? [g] : g.instances))
 
-const inHome = computed(() => route.matched[0]?.path === '/')
+const inHome = computed(() => route.matched[0]?.path === '/' && route.query.browse !== '1')
 const nav = computed(() => [
   { key: 'play', icon: 'sports_esports', label: 'Play', testid: 'nav-home', active: inHome.value, go: () => router.push('/') },
-  { key: 'store', icon: 'storefront', label: 'Browse mods', testid: 'nav-store', active: route.path.startsWith('/store'), go: () => router.push('/store') },
+  { key: 'browse', icon: 'travel_explore', label: 'Browse mods', testid: 'nav-store', active: route.path === '/mods' && route.query.browse === '1', go: () => router.push({ path: '/mods', query: { browse: '1' } }) },
   { key: 'me', icon: 'checkroom', label: 'Accounts & skins', testid: 'nav-me', active: route.path.startsWith('/me'), go: () => router.push('/me') },
-  { key: 'mp', icon: 'hub', label: 'Play together', testid: 'nav-multiplayer', active: route.path === '/multiplayer', go: () => openMultiplayer() },
   { key: 'setting', icon: 'settings', label: 'Settings', testid: 'nav-settings', active: route.path.startsWith('/setting'), go: () => router.push('/setting') },
 ])
 

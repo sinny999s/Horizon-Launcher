@@ -16,7 +16,7 @@
           data-testid="add-instance-name"
           variant="outlined"
           autofocus
-          :class="content.edition === 'bedrock' ? 'col-span-4' : 'col-span-2'"
+          class="col-span-4"
           :loading="loading"
           :disabled="loading"
           persistent-hint
@@ -27,8 +27,9 @@
           :rules="nameRules"
           required
         />
+        <!-- Horizon Client: no author or description for a new instance (they're modpack fields). -->
         <v-text-field
-          v-if="content.edition !== 'bedrock'"
+          v-if="false"
           v-model="content.author"
           :loading="loading"
           :disabled="loading"
@@ -39,6 +40,7 @@
           :label="t('shared.author')"
         />
         <v-text-field
+          v-if="false"
           v-model="content.description"
           :loading="loading"
           :disabled="loading"

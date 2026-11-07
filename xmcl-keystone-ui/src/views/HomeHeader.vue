@@ -1,58 +1,46 @@
 <template>
   <div
-    class="header sticky max-w-full select-none transition-all px-2"
-    :style="{
-      '--app-bar-blur': blurAppBar + 'px',
-    }"
-    :class="{
-      compact,
-    }"
-    @transitionstart="onTransitionStart"
-    @transitionend="onTransitionEnd"
-    @transitioncancel="onTransitionEnd"
+    class="header hz-header sticky max-w-full select-none"
+    :class="{ compact }"
     @wheel.stop
   >
-    <div
-      class="flex flex-col header-content"
-      style="margin: auto"
-      :style="{
-        opacity: dragover ? 0 : '',
-      }"
-    >
-      <div
-        class="header-primary-row align-center flex max-h-20 flex-1 flex-grow-0 items-baseline pl-6 pr-2 gap-1"
-      >
-        <span
-          :style="{
-            fontSize: headerFontSize
-          }"
-          class="home-title overflow-hidden overflow-ellipsis whitespace-nowrap transition-all"
-        >{{ name || `Minecraft ${version.minecraft}` }}</span>
-        <router-view name="route" />
+    <div class="hz-header__inner" :style="{ opacity: dragover ? 0 : '' }">
+      <div class="hz-header__row">
+        <img class="hz-header__icon" :src="favicon" draggable="false">
+        <div class="hz-header__title">
+          <h1 class="hz-h1 home-title">
+            {{ name || `Minecraft ${version.minecraft}` }}
+          </h1>
+          <div class="hz-sub">
+            Minecraft <b>{{ version.minecraft || '?' }}</b>
+            <template v-if="version.fabricLoader">
+              · Fabric {{ version.fabricLoader }}
+            </template>
+            <template v-if="horizonVersion">
+              · Horizon {{ horizonVersion }}
+            </template>
+          </div>
+        </div>
         <div class="flex-grow" />
         <router-view name="actions" v-slot="{ Component }">
-          <transition
-            name="slide-x-transition"
-            mode="out-in"
-          >
-            <component :is="Component" class="flex-shrink-0" />
-          </transition>
+          <component :is="Component" class="hz-header__actions flex-shrink-0" />
         </router-view>
+        <HorizonPlayButton v-if="route.path !== '/'" />
       </div>
-      <router-view name="extensions" v-slot="{ Component }">
-        <transition
-          name="slide-y-reverse-transition"
-          mode="out-in"
+      <nav class="hz-seg hz-header__tabs" aria-label="Instance pages">
+        <router-link
+          v-for="tab of tabs"
+          :key="tab.to"
+          :to="tab.to"
+          :class="{ on: isTab(tab.to) }"
+          :data-testid="`tab-${tab.key}`"
         >
-          <component
-            :is="Component"
-            class="header-extension px-4"
-            :class="{
-              'mt-5': !compact,
-              'mt-1': compact,
-            }"
-          />
-        </transition>
+          <v-icon>{{ tab.icon }}</v-icon>
+          {{ tab.label }}
+        </router-link>
+      </nav>
+      <router-view name="extensions" v-slot="{ Component }">
+        <component :is="Component" v-if="route.path !== '/'" class="hz-head-ext" />
       </router-view>
     </div>
     <div
@@ -67,14 +55,7 @@
         :text="t('modpack.dropHint')"
         icon="save_alt"
         class="rounded transition-all"
-        :class="{
-          dragover,
-          yellow: overcount > 0,
-          'darken-2': overcount > 0,
-        }"
-        :style="{
-          transform: overcount > 0 ? 'scale(1.0125)' : ''
-        }"
+        :class="{ dragover }"
       />
     </div>
   </div>
@@ -87,35 +68,39 @@ import { kDropHandler } from '@/composables/dropHandler'
 import { kInstance } from '@/composables/instance'
 import { AddInstanceDialogKey } from '@/composables/instanceTemplates'
 import { kCompact } from '@/composables/scrollTop'
-import { kTheme } from '@/composables/theme'
 import { injection } from '@/util/inject'
+import { kInstanceModsContext } from '@/composables/instanceMods'
+import { getInstanceIcon } from '@/util/favicon'
+import HorizonPlayButton from './HorizonPlayButton.vue'
 
-const { name, runtime: version } = injection(kInstance)
-const { blurAppBar } = injection(kTheme)
+/**
+ * Horizon Client: the instance header. Icon, name and versions, XMCL's page actions, the Play button, and a tab
+ * bar for the instance pages (XMCL had no tabs: it reached them from cards on the home page).
+ */
+const { name, runtime: version, instance } = injection(kInstance)
 const { t } = useI18n()
+const route = useRoute()
+const { mods } = injection(kInstanceModsContext)
+
+const favicon = computed(() => getInstanceIcon(instance.value, undefined))
+const horizonVersion = computed(() => mods.value.find(m => m.modId === 'horizon')?.version ?? '')
+
+const tabs = [
+  { key: 'overview', to: '/', icon: 'space_dashboard', label: 'Overview' },
+  { key: 'mods', to: '/mods', icon: 'extension', label: 'Mods' },
+  { key: 'worlds', to: '/save', icon: 'public', label: 'Worlds' },
+  { key: 'resourcepacks', to: '/resourcepacks', icon: 'palette', label: 'Resource packs' },
+  { key: 'shaders', to: '/shaderpacks', icon: 'wb_sunny', label: 'Shaders' },
+  { key: 'settings', to: '/base-setting', icon: 'tune', label: 'Settings' },
+]
+function isTab(to: string) {
+  return to === '/' ? route.path === '/' : route.path.startsWith(to)
+}
 
 const transitioning = ref(false)
 provide('transitioning', transitioning)
 
-const onTransitionStart = (e: TransitionEvent) => {
-  if (e.propertyName !== 'transform') return
-  transitioning.value = true
-}
-const onTransitionEnd = (e: TransitionEvent) => {
-  if (e.propertyName !== 'transform') return
-  transitioning.value = false
-}
-
 const compact = injection(kCompact)
-const headerFontSize = computed(() => {
-  if (compact.value) {
-    return '1.35rem'
-  }
-  if (name.value && name.value.length > 30) {
-    return '2rem'
-  }
-  return '2.425rem'
-})
 
 const { dragover } = injection(kDropHandler)
 const { show } = useDialog(AddInstanceDialogKey)
@@ -135,71 +120,42 @@ const onDropModpack = (e: DragEvent) => {
 const overcount = ref(0)
 </script>
 <style scoped>
-
-.header {
-  padding-top: 2.5rem;
+.hz-header {
+  padding: 26px 28px 14px;
+  z-index: 20;
 }
-
-/*
- * Faded backdrop so content scrolling underneath the sticky header is masked
- * instead of bleeding through the (otherwise transparent) header. The gradient
- * matches the global app-bar overlay color and lives in the header's own
- * stacking context (z-20), so it sits above the scrolling page content while
- * staying behind the header text (z-index: -1). The backdrop blur is masked
- * with the same gradient so it fades out smoothly instead of cutting off.
- */
-.header::before {
+.hz-header::before {
   content: '';
   position: absolute;
   inset: 0;
-  bottom: -70px;
+  bottom: -24px;
   z-index: -1;
   pointer-events: none;
-  background-image: linear-gradient(var(--app-bar-color, transparent), transparent);
-  -webkit-backdrop-filter: blur(var(--app-bar-blur, 0));
-  backdrop-filter: blur(var(--app-bar-blur, 0));
-  -webkit-mask-image: linear-gradient(black 40%, transparent);
-  mask-image: linear-gradient(black 40%, transparent);
+  background: linear-gradient(#0b0b0e 55%, transparent);
+  -webkit-mask-image: linear-gradient(black 60%, transparent);
+  mask-image: linear-gradient(black 60%, transparent);
 }
-
-.header.compact::before {
-  bottom: -20px;
+.hz-header__inner { display: flex; flex-direction: column; gap: 16px; }
+.hz-header__row { display: flex; align-items: center; gap: 14px; min-width: 0; }
+.hz-header__icon {
+  width: 46px;
+  height: 46px;
+  border-radius: 12px;
+  flex: none;
+  image-rendering: pixelated;
+  background: var(--hz-fill2);
+  box-shadow: inset 0 0 0 1px var(--hz-line);
 }
-
-.header.compact {
-  padding-top: 0.2rem;
-  padding-bottom: 0.5rem;
-}
-
-.header-primary-row,
-.home-title {
-  min-width: 0;
-}
-
-.header.compact .header-primary-row {
-  min-height: 36px;
-  align-items: center;
-  padding-left: 1rem;
-}
-
+.hz-header__title { min-width: 0; }
+.hz-header__title h1 { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hz-header__actions :deep(.v-btn) { color: var(--hz-t3); }
+.hz-header__actions :deep(.v-btn:hover) { color: var(--hz-t1); }
+.hz-header__tabs { align-self: flex-start; }
+.hz-header.compact { padding-top: 12px; }
+.hz-header.compact .hz-header__icon { width: 36px; height: 36px; border-radius: 10px; }
+.hz-header.compact .hz-h1 { font-size: 20px; }
+.hz-header.compact .hz-sub { display: none; }
 @media (max-width: 900px) {
-  .header {
-    padding-right: 0.25rem !important;
-    padding-left: 0.25rem !important;
-  }
-
-  .header-primary-row {
-    padding-left: 0.75rem !important;
-  }
-
-  .header.compact .home-title {
-    max-width: 40vw;
-  }
-
-  .header-extension {
-    padding-right: 0.75rem !important;
-    padding-left: 0.75rem !important;
-  }
+  .hz-header { padding-left: 16px; padding-right: 16px; }
 }
-
 </style>
