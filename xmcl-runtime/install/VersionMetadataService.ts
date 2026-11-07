@@ -3,6 +3,7 @@ import { LabyModManifest } from '@xmcl/installer'
 import {
   FabricArtifactVersion,
   FabricVersionsResult,
+  filterHorizonMinecraftVersions,
   ForgeVersion,
   MinecraftVersions,
   OptifineVersion,
@@ -108,9 +109,10 @@ const labyModManifestSchema = z.object({
 
 @ExposeServiceKey(VersionMetadataServiceKey)
 export class VersionMetadataService extends AbstractService implements IVersionMetadataService {
+  // Horizon Client: 26.3 until the version list says otherwise.
   private latest = {
-    release: '1.21.8',
-    snapshot: '21w37a',
+    release: '26.3',
+    snapshot: '26.3',
   }
 
   constructor(@Inject(LauncherAppKey) app: LauncherApp) {
@@ -153,8 +155,35 @@ export class VersionMetadataService extends AbstractService implements IVersionM
     return this.getAppDataPath('version-metadata', name)
   }
 
+  /**
+   * Horizon Client: Fabric's supported game versions, to hide releases Fabric can't run yet.
+   * Undefined when Fabric's meta can't be reached (then every release from 26.3 on is shown).
+   */
+  async #fabricGameVersions(): Promise<string[] | undefined> {
+    try {
+      return (await this.getFabricVersions()).gameVersions
+    } catch {
+      return undefined
+    }
+  }
+
   @Singleton((force) => `minecraft-${!!force}`)
   async getMinecraftVersions(force?: boolean): Promise<MinecraftVersions> {
+    // Horizon Client: only releases from 26.3 on that Fabric supports.
+    const fabricGameVersions = await this.#fabricGameVersions()
+    const raw = await this.#getAllMinecraftVersions(force, (fresh) => {
+      const filtered = filterHorizonMinecraftVersions(fresh, fabricGameVersions)
+      this.latest.release = filtered.latest.release
+      this.latest.snapshot = filtered.latest.snapshot
+      this.emit('minecraftVersions', filtered)
+    })
+    const data = filterHorizonMinecraftVersions(raw, fabricGameVersions)
+    this.latest.release = data.latest.release
+    this.latest.snapshot = data.latest.snapshot
+    return data
+  }
+
+  async #getAllMinecraftVersions(force: boolean | undefined, onFresh: (fresh: MinecraftVersions) => void): Promise<MinecraftVersions> {
     const sources: VersionMetadataSource<MinecraftVersions>[] = [
       {
         url: 'https://launchermeta.mojang.com/mc/game/version_manifest.json',
@@ -174,14 +203,8 @@ export class VersionMetadataService extends AbstractService implements IVersionM
       sources,
       logger: this.logger,
       force,
-      onFresh: (fresh) => {
-        this.latest.release = fresh.latest.release
-        this.latest.snapshot = fresh.latest.snapshot
-        this.emit('minecraftVersions', fresh)
-      },
+      onFresh,
     })
-    this.latest.release = data.latest.release
-    this.latest.snapshot = data.latest.snapshot
     return data
   }
 

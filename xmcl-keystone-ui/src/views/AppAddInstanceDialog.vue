@@ -30,8 +30,9 @@
           </div>
         </div>
         <div class="flex items-center gap-3">
+          <!-- Horizon Client: Java edition only (Fabric), so no Bedrock toggle. -->
           <v-btn-toggle
-            v-if="steps[step - 1] === 'config' && hasMinecraftLicense && bedrockSupported"
+            v-if="false && steps[step - 1] === 'config' && hasMinecraftLicense && bedrockSupported"
             data-testid="add-instance-edition"
             :model-value="creation.data.edition"
             mandatory

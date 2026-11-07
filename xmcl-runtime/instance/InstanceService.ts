@@ -37,6 +37,8 @@ import { ENOENT_ERROR, exists, isDirectory, isPathDiskRootPath, linkOrCopyFile, 
 import { getMediaIconPath, resolveInstanceIcon, serializeInstanceIcon, toMediaIconUrl } from './instanceIcon'
 import { requireObject, requireString } from '../util/object'
 import { getTracker } from '~/util/taskHelper'
+import { installHorizonMods } from '~/horizon/horizonMods'
+import { HORIZON_MIN_MINECRAFT, isHorizonMinecraftVersion } from '@xmcl/runtime-api'
 import { setTimeout } from 'timers/promises'
 
 const INSTANCES_FOLDER = 'instances'
@@ -357,12 +359,45 @@ export class InstanceService extends StatefulService<InstanceState> implements I
     return true
   }
 
+  /**
+   * Horizon Client: a new instance is Java edition, Minecraft 26.3 or newer, on Fabric. A missing Minecraft
+   * or Fabric version is filled in with the newest; another loader or an older version is refused.
+   */
+  async #applyHorizonRules(payload: CreateInstanceOptions) {
+    const runtime = payload.runtime ?? (payload.runtime = {} as any)
+    if (payload.edition === 'bedrock') {
+      throw new AnyError('HorizonUnsupported', 'Horizon Client only makes Java edition instances.')
+    }
+    if (runtime.forge || runtime.neoForged || runtime.quiltLoader || runtime.optifine || runtime.labyMod) {
+      throw new AnyError('HorizonUnsupported', 'Horizon Client only supports Fabric. This needs another mod loader.')
+    }
+    if (!runtime.minecraft) {
+      runtime.minecraft = (await this.versionMetadataService.getMinecraftVersions().catch(() => undefined))?.latest.release ||
+        this.versionMetadataService.getLatestRelease()
+    }
+    if (!isHorizonMinecraftVersion(runtime.minecraft)) {
+      throw new AnyError('HorizonUnsupported', `Horizon Client supports Minecraft ${HORIZON_MIN_MINECRAFT} and newer, not ${runtime.minecraft}.`)
+    }
+    if (!runtime.fabricLoader) {
+      const fabric = await this.versionMetadataService.getFabricVersions().catch(() => undefined)
+      const loader = fabric?.loaderVersions.find(v => v.stable) ?? fabric?.loaderVersions[0]
+      if (!loader) {
+        throw new AnyError('HorizonUnsupported', 'Could not get the Fabric loader version list. Check your connection and try again.')
+      }
+      runtime.fabricLoader = loader.version
+    }
+    // A pinned version id would bypass the Fabric loader choice.
+    payload.version = ''
+  }
+
   async createInstance(payload: CreateInstanceOptions): Promise<string> {
     requireObject(payload)
 
     if (!payload.name) {
       throw new TypeError('payload.name should not be empty!')
     }
+
+    await this.#applyHorizonRules(payload)
 
     const instance = createInstance(
       payload,
@@ -391,6 +426,9 @@ export class InstanceService extends StatefulService<InstanceState> implements I
       this.error(e)
       return ''
     })
+
+    // Horizon Client: every new instance starts with Horizon, Fabric API and Fabric Language Kotlin.
+    await installHorizonMods(this.app, this, instance.path, instance.runtime.minecraft)
 
     await writeJson(join(instance.path, 'instance.json'), {
       ...instance,

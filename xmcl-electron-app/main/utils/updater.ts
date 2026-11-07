@@ -487,6 +487,19 @@ export class ElectronUpdater implements LauncherAppUpdater {
   }
 
   async checkUpdateTask(): Promise<ReleaseInfo> {
+    // Horizon Client: no update feed yet. XMCL's feeds (api.xmcl.app, its GitHub releases) would offer
+    // XMCL's own builds, so updates are off. To turn them on, host Horizon Client releases, point
+    // `publish` in build/electron-builder.config.ts and #getUpdateFromSelfHost at them, and remove this.
+    if (!process.env.HORIZON_ENABLE_UPDATES) {
+      return {
+        name: `v${this.app.version}`,
+        body: '',
+        date: new Date().toISOString(),
+        files: [],
+        newUpdate: false,
+        operation: ElectronUpdateOperation.Manual,
+      }
+    }
     // External or unstable-path AppImages only discover release metadata:
     // checkForUpdates can start a download and register install-on-quit hooks.
     if (await this.externallyUpdatedAppImage() || this.app.platform.os === 'windows' || this.app.platform.os === 'osx') {

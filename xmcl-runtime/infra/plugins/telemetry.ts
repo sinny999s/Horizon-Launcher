@@ -54,6 +54,9 @@ import {
 } from '../telemetry_sampling'
 import { disableAzureMonitorDiagnostics } from '../telemetry_exporter'
 
+/** Horizon Client: telemetry export is off until Horizon has its own Application Insights key. */
+const HORIZON_TELEMETRY_EXPORT = false
+
 const installOperations: Record<string, ReadonlySet<string>> = {
   VersionInstallService: new Set(['install', 'installInstance']),
   InstanceInstallService: new Set(['installInstanceFiles', 'resumeInstanceInstall']),
@@ -89,24 +92,25 @@ export const pluginTelemetry: LauncherAppPlugin = async (app) => {
     sampler: new ParentBasedSampler({
       root: new XmclRootTraceSampler(),
     }),
-    spanProcessors: [
+    // Horizon Client: APP_INSIGHT_KEY is XMCL's own Azure account, so nothing is exported.
+    spanProcessors: HORIZON_TELEMETRY_EXPORT ? [
       new BatchSpanProcessor(
         new AzureMonitorTraceExporter({
           connectionString: APP_INSIGHT_KEY,
         }),
       ),
-    ],
+    ] : [],
   })
   traceProvider.register()
   const logProvider = new LoggerProvider({
     resource,
-    processors: [
+    processors: HORIZON_TELEMETRY_EXPORT ? [
       new BatchLogRecordProcessor({
         exporter: new AzureMonitorLogExporter({
           connectionString: APP_INSIGHT_KEY,
         }),
       }),
-    ],
+    ] : [],
   })
   logs.setGlobalLoggerProvider(logProvider)
   setRuntimeTelemetryIdentity(clientSession)
@@ -296,7 +300,7 @@ export const pluginTelemetry: LauncherAppPlugin = async (app) => {
     })
 
     // resource data are enormous, so we need to handle them separately
-    setupResourceTelemetryClient(app, settings, clientSession)
+    if (HORIZON_TELEMETRY_EXPORT) setupResourceTelemetryClient(app, settings, clientSession)
 
     const sampleDownloadPerformance = isDeterministicallySampled(
       launcherSessionId,

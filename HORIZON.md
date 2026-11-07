@@ -1,0 +1,82 @@
+# Horizon Client launcher
+
+A launcher for the Horizon mod, built from [X Minecraft Launcher](https://github.com/Voxelum/x-minecraft-launcher)
+(XMCL) 0.73.1 by ci010 and contributors, MIT licence (see `LICENSE`). Microsoft sign-in, skins, mod browsing
+and launching work as they do in XMCL.
+
+## Build
+
+```powershell
+powershell -ExecutionPolicy Bypass -File build-horizon.ps1         # installer + portable exe
+powershell -ExecutionPolicy Bypass -File build-horizon.ps1 -Dev    # dev mode (renderer on localhost:3000)
+```
+
+Output in `xmcl-electron-app/build/output/`:
+- `horizon-client-<version>-setup.exe`: NSIS installer (per user, lets you pick the folder).
+- `horizon-client-<version>-portable.exe`: single exe, no install.
+
+The repo pins pnpm 11.10.0 and its scripts call `pnpm` again, so a global pnpm 12 fails with
+`ERR_PNPM_BAD_PM_VERSION`. The script keeps pnpm 11.10.0 in `.tools/` and puts it first on PATH.
+
+## What differs from XMCL
+
+**Name and data**
+- App name "Horizon Client", app id `dev.horizon.launcher`, exe `Horizon Client.exe`, Horizon's icon.
+- Launcher data: `%APPDATA%\horizon-client-launcher` (XMCL: `%APPDATA%\xmcl`). Chromium's user data is kept there too.
+  `horizon-launcher` is not used because the Rust Horizon client's launcher already owns that name.
+- Game data: `~/.horizonclient` (XMCL: `~/.minecraftx`).
+- OS link scheme `horizonclient://` (XMCL: `xmcl://`). Inside the app, requests still use `xmcl://`.
+- The game is told its launcher is "Horizon Client (version)".
+
+**Only Fabric, Minecraft 26.3+** (`xmcl-runtime-api/src/horizon.ts`)
+- The Minecraft list holds releases from 26.3 up that Fabric's meta lists. Snapshots and older versions are hidden.
+  A new release (26.4...) appears on its own once Mojang releases it and Fabric supports it.
+- The loader picker is Fabric only: no Vanilla, Forge, NeoForge, Quilt, OptiFine, LabyMod or "local version".
+  The Fabric loader is picked automatically and can't be cleared. There's no Bedrock edition toggle.
+- `InstanceService.createInstance` refuses anything else (old versions, other loaders, Bedrock), including modpack
+  imports, and fills in a missing Fabric loader.
+- The mod browser and modpack store only filter by Fabric.
+
+**Horizon in every new instance** (`xmcl-runtime/horizon/horizonMods.ts`)
+- `mods/` gets the Horizon jar, plus Fabric API and Fabric Language Kotlin (newest Modrinth release for that Minecraft
+  version, checked against Modrinth's sha1). Horizon depends on both.
+- The Horizon jar comes from `xmcl-electron-app/horizon-mod/` (shipped as `resources/horizon-mod/`). The jar for an
+  instance's Minecraft version is used: `horizon-<minecraft>-<version>.jar`. `pnpm --prefix=xmcl-electron-app horizon:mod`
+  copies the newest one from `../horizon-main/kotlin-client/build/libs`.
+- **Release hook:** set `HORIZON_RELEASE_MANIFEST_URL` in `horizonMods.ts` (or the environment variable of the same name)
+  to a JSON file like
+  `{ "mods": [{ "minecraft": "26.3", "version": "2.0.5", "url": "https://.../horizon-26.3-2.0.5.jar", "sha1": "..." }] }`.
+  The launcher then downloads Horizon from there. The bundled jar is only the fallback.
+
+**Import from XMCL** (`xmcl-electron-app/main/xmclImport.ts`)
+- On the first start it finds XMCL's data (the normal `%APPDATA%\xmcl` or the Microsoft Store one in
+  `%LOCALAPPDATA%\Packages\xmcl_*\LocalCache\Roaming\xmcl`) and copies:
+  accounts (`user.json` and the encrypted tokens in `secret/`), saved skins (`closet/`), settings (`setting.json`),
+  Java list (`java.json`, real `java`/`javaw` executables only), theme, and every Minecraft 26.3+ Fabric instance.
+- Instances are copied without `.fabric`, `logs`, `crash-reports`, `*.bk` and the links XMCL makes to its shared
+  `libraries`/`versions` folders. The launcher downloads its own game files.
+- Tokens are encrypted with Electron's safeStorage key, which lives in Chromium's `Local State`. The import copies that
+  key into our own `Local State` before Chromium starts, so the tokens decrypt here. XMCL's files are only read.
+- It runs once (`.xmcl-import.json` marks it) and only if this launcher has no accounts yet.
+- `HORIZON_NO_XMCL_IMPORT=1` turns it off.
+
+**Off until Horizon has its own services**
+- Auto-update. XMCL's feeds would offer XMCL builds. `publish` is `null` in `build/electron-builder.config.ts`, and
+  `ElectronUpdater.checkUpdateTask` reports "no update" unless `HORIZON_ENABLE_UPDATES` is set.
+- Telemetry export. The key in `APP_INSIGHT_KEY` belongs to XMCL's Azure account, so traces and logs aren't exported.
+- Windows targets are only `nsis` and `portable` (x64). XMCL's `zip`, `ia32` and `appx`/Microsoft Store targets are gone.
+
+## Testing on a clean profile
+
+`HORIZON_APP_DATA=<dir>` moves the launcher data folder and `HORIZON_GAME_DATA=<dir>` moves the game folder the
+import creates, e.g. to test the import without touching the real profile.
+
+## Not done
+
+- Code signing. The installer is unsigned, so SmartScreen warns on first run.
+- Update feed (see above). The version is still XMCL's 0.73.1.
+- The macOS (`.icns`), Linux packages and `deskgap-app` still carry XMCL's names and icons in places. Only Windows was built.
+- The HTTP user agent still names XMCL (`voxelum/x_minecraft_launcher/...`), because XMCL's CurseForge proxy and
+  API keys go with it.
+- Microsoft sign-in uses XMCL's Azure client id, as XMCL does. A Horizon-owned Azure app would need Mojang's approval
+  for Minecraft API access.

@@ -15,12 +15,15 @@
           <div>
             <a
               class="text-h5 font-weight-bold text-decoration-none"
-              href="https://www.xmcl.app"
+              href="https://github.com/Voxelum/x-minecraft-launcher"
               target="_blank"
-              v-shared-tooltip="() => 'XMCL'"
+              v-shared-tooltip="() => 'Horizon Client'"
             >
-              XMCL
+              Horizon Client
             </a>
+            <div class="text-caption mt-1 opacity-70">
+              Based on X Minecraft Launcher by ci010 and contributors (MIT licence).
+            </div>
             <div class="d-flex items-center gap-2 mt-2">
               <a
                 href="https://afdian.com/a/ci010"

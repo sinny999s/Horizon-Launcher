@@ -180,7 +180,7 @@
         :mode="source"
         :game-version="gameVersion"
         :modloader="modLoader"
-        :mod-loaders="[ModLoaderFilter.forge, ModLoaderFilter.neoforge, ModLoaderFilter.fabric, ModLoaderFilter.quilt]"
+        :mod-loaders="[ModLoaderFilter.fabric]"
         :modrinth-environment="modrinthEnvironment"
         @update:curseforge-category="curseforgeCategory = $event"
         @update:modrinth-categories="modrinthCategories = $event"

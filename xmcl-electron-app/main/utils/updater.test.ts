@@ -1,5 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+// Horizon Client turns updates off unless this is set; these tests cover the update logic itself.
+process.env.HORIZON_ENABLE_UPDATES = '1'
+
 const mocks = vi.hoisted(() => ({
   getFeedURL: vi.fn(), checkForUpdates: vi.fn(), downloadUpdate: vi.fn(), quitAndInstall: vi.fn(), openExternal: vi.fn(),
 }))

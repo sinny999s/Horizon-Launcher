@@ -5,8 +5,8 @@ import { darkIco, darkIcon, darkTray, lightIco, lightIcon, lightTray } from './u
 import { HAS_DEV_SERVER, HOST } from './constant'
 
 const manifest: InstalledAppManifest = {
-  name: 'KeyStone Launcher',
-  description: 'The default launcher UI',
+  name: 'Horizon Client',
+  description: 'Horizon Client launcher (based on X Minecraft Launcher)',
   url: HAS_DEV_SERVER ? defaultUrl : `http://${HOST}/index.html`,
   backgroundColor: '0x424242',
   minWidth: 800,

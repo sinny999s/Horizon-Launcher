@@ -13,24 +13,22 @@ const linuxPackageScripts = {
 }
 
 export const config = {
-  productName: 'XMCL',
-  appId: 'xmcl',
+  // Horizon Client: its own name and id, so it installs beside XMCL instead of over it.
+  productName: 'Horizon Client',
+  appId: 'dev.horizon.launcher',
   directories: {
     output: 'build/output',
     buildResources: 'build',
     app: '.',
   },
   protocols: {
-    name: 'XMCL',
-    schemes: ['xmcl'],
+    name: 'Horizon Client',
+    schemes: ['horizonclient'],
   },
   // assign publish for auto-updater
   // set this to your own repo!
-  publish: [{
-    provider: 'github',
-    owner: 'voxelum',
-    repo: 'x-minecraft-launcher',
-  }],
+  // Horizon Client: no update feed yet. Point this at the Horizon release repo to turn on auto-update.
+  publish: null,
   files: [{
     from: 'dist',
     to: '.',
@@ -44,8 +42,13 @@ export const config = {
     from: 'main/agent-documents',
     to: 'agent-documents',
     filter: ['**/*.md'],
+  }, {
+    // Horizon Client: the Horizon mod jar(s) copied into new instances (see horizon-mod/README.md).
+    from: 'horizon-mod',
+    to: 'horizon-mod',
+    filter: ['*.jar'],
   }],
-  artifactName: 'xmcl-${version}-${platform}-${arch}.${ext}',
+  artifactName: 'horizon-client-${version}-${platform}-${arch}.${ext}',
   appx: {
     displayName: 'XMCL',
     applicationId: 'xmcl',
@@ -91,33 +94,39 @@ export const config = {
   win: {
     signtoolOptions: {
       certificateFile: undefined as string | undefined,
-      publisherName: 'CI010',
+      publisherName: 'Horizon',
     },
     icon: 'icons/dark.ico',
     electronLanguages: ['en-US'],
+    // Horizon Client: an NSIS installer and a single-file portable exe (MC 26.3 needs 64-bit Java anyway).
     target: [
-      {
-        target: 'zip',
-        arch: [
-          'x64',
-          'ia32',
-        ],
-      },
-      'appx',
+      { target: 'nsis', arch: ['x64'] },
+      { target: 'portable', arch: ['x64'] },
     ],
   },
+  nsis: {
+    oneClick: false,
+    allowToChangeInstallationDirectory: true,
+    artifactName: 'horizon-client-${version}-setup.${ext}',
+    shortcutName: 'Horizon Client',
+    uninstallDisplayName: 'Horizon Client',
+    // The licence page shows build/license.txt (XMCL's MIT licence with a credit line).
+  },
+  portable: {
+    artifactName: 'horizon-client-${version}-portable.${ext}',
+  },
   linux: {
-    executableName: 'xmcl',
+    executableName: 'horizon-client',
     electronLanguages: ['en-US'],
     desktop: {
       entry: {
-        MimeType: 'x-scheme-handler/xmcl',
-        StartupWMClass: 'xmcl',
+        MimeType: 'x-scheme-handler/horizonclient',
+        StartupWMClass: 'horizon-client',
       },
     },
     category: 'Game',
     icon: 'icons/dark.icns',
-    artifactName: 'xmcl-${version}-${arch}.${ext}',
+    artifactName: 'horizon-client-${version}-${arch}.${ext}',
     target: [
       { target: 'deb', arch: ['x64', 'arm64'] },
       { target: 'rpm', arch: ['x64', 'arm64'] },

@@ -5,6 +5,30 @@ require('graceful-fs').gracefulify(require('fs'))
 import { app } from 'electron'
 // eslint-disable-next-line import/first
 import ElectronLauncherApp from './ElectronLauncherApp'
+// eslint-disable-next-line import/first
+import { join } from 'path'
+// eslint-disable-next-line import/first
+import { LAUNCHER_NAME } from '@xmcl/runtime/constant'
+// eslint-disable-next-line import/first
+import { importXmcl } from './xmclImport'
+// eslint-disable-next-line import/first
+import { IS_DEV } from './constant'
+
+// Horizon Client: HORIZON_APP_DATA moves the whole launcher data folder (for testing on a clean profile).
+if (process.env.HORIZON_APP_DATA && !process.env.XMCL_E2E_APP_DATA) {
+  app.setPath('appData', process.env.HORIZON_APP_DATA)
+}
+// Horizon Client: keep Chromium's user data (Local State, caches) in our own folder, never XMCL's.
+if (!process.env.XMCL_E2E_APP_DATA) {
+  app.setPath('userData', join(app.getPath('appData'), LAUNCHER_NAME))
+}
+// Horizon Client: first start imports accounts, settings and 26.3+ Fabric instances from XMCL (read-only).
+// This must stay synchronous and before the app is constructed: see xmclImport.ts.
+try {
+  importXmcl(IS_DEV)
+} catch (e) {
+  console.error('[XmclImport] failed', e)
+}
 
 // Disable sandbox for AppImage to avoid chrome-sandbox permission issues
 // AppImage mounts to /tmp which cannot have proper setuid permissions

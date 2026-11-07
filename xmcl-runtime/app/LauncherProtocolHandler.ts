@@ -1,4 +1,10 @@
 import { Readable } from 'stream'
+import { LAUNCHER_PROTOCOL } from '../constant'
+
+/** Horizon Client: links opened as `horizonclient://...` are handled like XMCL's internal `xmcl://...`. */
+export function toInternalScheme(url: string) {
+  return url.startsWith(`${LAUNCHER_PROTOCOL}:`) ? `xmcl:${url.substring(LAUNCHER_PROTOCOL.length + 1)}` : url
+}
 
 export interface Context {
   request: Request
@@ -91,7 +97,7 @@ export class LauncherProtocolHandler {
     const context: Context = {
       request: {
         method: request.method ?? 'GET',
-        url: typeof request.url === 'string' ? new URL(request.url, 'xmcl://launcher') : request.url,
+        url: typeof request.url === 'string' ? new URL(toInternalScheme(request.url), 'xmcl://launcher') : request.url,
         headers: request.headers || {},
         body: request.body,
         signal: request.signal,

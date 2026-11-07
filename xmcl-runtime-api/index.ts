@@ -26,6 +26,7 @@ export * from './src/entities/update'
 export * from './src/entities/user'
 export * from './src/entities/user.schema'
 export * from './src/entities/version'
+export * from './src/horizon'
 export * from './src/entities/resource'
 export * from './src/entities/yggdrasil.schema'
 

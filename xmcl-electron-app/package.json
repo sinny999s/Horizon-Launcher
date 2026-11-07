@@ -1,10 +1,11 @@
 {
-    "name": "xmcl",
+    "name": "horizon-client-launcher",
+    "productName": "Horizon Client",
     "private": true,
     "main": "./index.js",
     "version": "0.73.1",
-    "author": "ci010 <cijhn@hotmail.com>",
-    "description": "XMCL - An open-source launcher for Minecraft",
+    "author": "Horizon (based on X Minecraft Launcher by ci010)",
+    "description": "Horizon Client - a Minecraft 26.3+ Fabric launcher for the Horizon mod, based on X Minecraft Launcher (MIT)",
     "license": "MIT",
     "engines": {
         "node": ">=22.16.0"
@@ -20,6 +21,7 @@
         "build:all": "cross-env NODE_ENV=production cross-env BUILD_TARGET=all tsx build.ts",
         "postinstall": "tsx postinstall.ts",
         "postsign": "tsx postsign.ts",
+        "horizon:mod": "tsx scripts/copy-horizon-mod.ts",
         "fmt": "oxfmt -c ../.oxfmtrc.json .",
         "check": "tsc --noEmit --project tsconfig.json && tsc --noEmit --project preload/tsconfig.json",
         "dev": "cross-env NODE_ENV=development tsx dev.ts",

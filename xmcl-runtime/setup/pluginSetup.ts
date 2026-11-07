@@ -8,6 +8,7 @@ import { SetupWorker } from './setupWorker'
 // eslint-disable-next-line import/default
 import createSetupWorker from './setupWorkerEntry?worker'
 import { Exception } from '@xmcl/runtime-api'
+import { DEFAULT_GAME_FOLDER } from '../constant'
 
 /**
  * Returns true if the drive is a real user-accessible filesystem suitable as
@@ -87,7 +88,7 @@ export const pluginSetup: LauncherAppPlugin = async (app) => {
   app.controller.handle('preset', async () => {
     // E2E isolation: when the harness provides a game-data root, use it as the
     // onboarding default so the wizard never points at the real ~/.minecraftx.
-    const defaultPath = process.env.XMCL_E2E_GAME_DATA || join(app.host.getPath('home'), '.minecraftx')
+    const defaultPath = process.env.XMCL_E2E_GAME_DATA || join(app.host.getPath('home'), DEFAULT_GAME_FOLDER)
     const getPath = (driveSymbol: string) => {
       const parsedHome = parse(defaultPath)
       if (
@@ -96,7 +97,7 @@ export const pluginSetup: LauncherAppPlugin = async (app) => {
       ) {
         return defaultPath
       }
-      return join(driveSymbol, '.minecraftx')
+      return join(driveSymbol, DEFAULT_GAME_FOLDER)
     }
     const getAllDrived = async () => {
       try {

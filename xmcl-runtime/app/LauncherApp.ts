@@ -9,7 +9,7 @@ import { Readable } from 'stream'
 import { pipeline } from 'stream/promises'
 import { setTimeout } from 'timers/promises'
 import { Logger } from '~/infra'
-import { IS_DEV, LAUNCHER_NAME } from '../constant'
+import { IS_DEV, LAUNCHER_NAME, LAUNCHER_PROTOCOL } from '../constant'
 import { isSystemError } from '@xmcl/utils'
 import { handleMigrateRoot } from './migrate'
 import { listen } from '../util/server'
@@ -332,8 +332,8 @@ export class LauncherApp extends EventEmitter {
     this.logger.log(`Boot from ${this.appDataPath}`)
 
     // register xmcl protocol
-    if (!this.host.isDefaultProtocolClient('xmcl')) {
-      const result = this.host.setAsDefaultProtocolClient('xmcl')
+    if (!this.host.isDefaultProtocolClient(LAUNCHER_PROTOCOL)) {
+      const result = this.host.setAsDefaultProtocolClient(LAUNCHER_PROTOCOL)
       if (result) {
         this.logger.log('Successfully register the xmcl protocol')
       } else {

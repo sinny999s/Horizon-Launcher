@@ -181,12 +181,14 @@ describe('InstanceService icon storage', () => {
 
     const path = await service.createInstance({
       name: 'GIF modpack',
-      runtime: { minecraft: '1.20.1' },
+      // Horizon Client only creates 26.3+ Fabric instances.
+      runtime: { minecraft: '26.3', fabricLoader: '0.20.1' },
       icon,
       upstream: { type: 'curseforge-modpack', modId: 385053, fileId: 8813051 },
     })
 
-    expect(fetch).toHaveBeenCalledExactlyOnceWith(icon)
+    // Horizon Client also asks Modrinth for Fabric API and Fabric Language Kotlin.
+    expect(fetch).toHaveBeenCalledWith(icon)
     expect(state.all[path].icon).toBe(`http://launcher/media?path=${join(path, 'icon.gif')}`)
     expect((await readJson(join(path, 'instance.json'))).icon).toBe('icon.gif')
     expect(await readFile(join(path, 'icon.gif'))).toEqual(animatedGif)

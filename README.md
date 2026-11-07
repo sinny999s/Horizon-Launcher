@@ -1,3 +1,6 @@
+> **Horizon Client**: this is a fork of X Minecraft Launcher, rebranded and limited to Minecraft 26.3+ with Fabric for the Horizon mod.
+> See [HORIZON.md](HORIZON.md) for what changed and how to build it. The original README follows.
+
 <p align="center">
   <a href="https://xmcl.app" target="_blank">
     <img alt="Logo" width="100" src="https://github.com/Voxelum/x-minecraft-launcher/blob/master/xmcl-electron-app/icons/dark@256x256.png">

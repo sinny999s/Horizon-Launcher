@@ -29,7 +29,7 @@ describe('Linux system packaging', () => {
   it('allows namespaces for the actual installed executable', () => {
     const profile = readFileSync(resolve(__dirname, '..', config.deb.appArmorProfile), 'utf8')
       .replaceAll('${executable}', config.linux.executableName)
-    expect(profile).toContain('profile "xmcl" "/opt/xmcl/xmcl" flags=(unconfined)')
+    expect(profile).toContain('profile "horizon-client" "/opt/xmcl/horizon-client" flags=(unconfined)')
     expect(profile).toContain('userns,')
   })
 })

@@ -34,7 +34,8 @@
       </div>
 
       <!-- Edition Selector (Java vs Bedrock) if bedrock is supported -->
-      <div v-if="bedrockSupported" class="flex flex-col gap-2">
+      <!-- Horizon Client: Java edition only (Fabric), so no edition choice. -->
+      <div v-if="false && bedrockSupported" class="flex flex-col gap-2">
         <div class="text-xs font-bold uppercase tracking-wider text-white/50">
           {{ t('bigPicture.editionToggle') }}
         </div>

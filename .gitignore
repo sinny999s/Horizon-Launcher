@@ -34,3 +34,6 @@ e2e/test-results/
 
 # local download-probe / benchmark artifacts (opt-in tests)
 /bench-out/
+
+# Horizon Client: local pnpm 11.10.0 (see build-horizon.ps1)
+.tools/

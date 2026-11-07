@@ -433,7 +433,8 @@ const {
 } = injection(kModrinthTags)
 const { categories: curseforgeCategories } = injection(kCurseforgeCategories)
 const catModLoaders = computed(() =>
-  modrinthModloaders.value.filter((v) => v.supported_project_types.includes('modpack')),
+  // Horizon Client: Fabric modpacks only.
+  modrinthModloaders.value.filter((v) => v.supported_project_types.includes('modpack') && v.name === 'fabric'),
 )
 
 const enter = (type: string, id: string) => {
