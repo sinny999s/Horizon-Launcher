@@ -63,17 +63,11 @@
           <SettingGeneral class="mb-4" />
           <SettingAdvanced />
         </section>
-        <section id="appearance" class="mb-8 scroll-target" role="region" :aria-label="t('setting.appearance')">
-          <SettingHeader
-            icon="brush"
-            :title="t('setting.appearance')"
-            :subtitle="t('setting.appearanceDescription')"
-          />
-          <SettingGlobalUI />
-        </section>
+        <!-- Horizon Client: no Appearance section. The launcher has Horizon's one look (sidebar, colours,
+             background); XMCL's sidebar style/position, theme colours and backgrounds don't apply. -->
         <section id="global" class="mb-8 scroll-target" role="region" :aria-label="t('setting.globalSetting')">
           <SettingHeader
-            :title="'🌍 ' + t('setting.globalSetting')"
+            :title="t('setting.globalSetting')"
             :subtitle="t('setting.globalSettingHint')"
           />
           <SettingGlobal />
@@ -98,7 +92,6 @@
             :title="t('setting.about')"
             icon="info"
           />
-          <SettingUpdate class="mb-4" />
           <SettingAbout />
         </section>
       </div>
@@ -115,7 +108,6 @@
 import { ref, computed, nextTick, onMounted, onUnmounted, provide, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import SettingUpdateInfoDialog from './SettingUpdateInfoDialog.vue'
-import SettingUpdate from './SettingUpdate.vue'
 import SettingGeneral from './SettingGeneral.vue'
 import SettingMigrationDialog from './SettingMigrationDialog.vue'
 import SettingGlobal from './SettingGlobal.vue'
@@ -130,7 +122,6 @@ import { kUpdateSettings, useUpdateSettings } from '@/composables/setting'
 import { kSurfaceTokens } from '@/composables/surfaceTokens'
 import { injection } from '@/util/inject'
 import { kTheme } from '@/composables/theme'
-import SettingGlobalUI from './SettingGlobalUI.vue'
 import { useMediaQuery } from '@vueuse/core'
 import SettingAdvanced from './SettingAdvanced.vue'
 import SettingHeader from '@/components/SettingHeader.vue'
@@ -163,7 +154,6 @@ let scrollTimeout: ReturnType<typeof setTimeout> | null = null
 
 const sections = [
   { id: 'general', title: 'setting.general', icon: 'tune' },
-  { id: 'appearance', title: 'setting.appearance', icon: 'palette' },
   { id: 'global', title: 'setting.globalSetting', icon: 'videogame_asset' },
   { id: 'network', title: 'setting.network', icon: 'wifi' },
   { id: 'backup', title: 'backup.title', icon: 'archive' },
@@ -235,13 +225,6 @@ useTutorial(
       popover: {
         title: t('setting.general'),
         description: t('tutorial.settings.generalDescription'),
-      },
-    },
-    {
-      element: '#appearance',
-      popover: {
-        title: t('setting.appearance'),
-        description: t('tutorial.settings.appearanceDescription'),
       },
     },
     {

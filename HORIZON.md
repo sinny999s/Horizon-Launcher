@@ -51,6 +51,9 @@ The repo pins pnpm 11.10.0 and its scripts call `pnpm` again, so a global pnpm 1
 - The sidebar's "Browse mods" opens Modrinth in the current instance. XMCL's store, news and "Play together"
   (XMCL's paid P2P service) are no longer in the sidebar.
 - CurseForge is off (`composables/search.ts`): its API needs a key that XMCL builds in at release time.
+- Settings: no Appearance section (global) or Appearance tab (instance), and per-instance themes and CSS no longer
+  apply (`windows/main/Context.ts`). No update card, no XMCL AI agent settings. About is Horizon's (credit and MIT
+  licence, system info); XMCL's account panel, donate badges, contributors and sponsors are gone.
 - The title bar has icon-only buttons (search, tasks) and no tutorial. The New instance dialog has just a name, the
   versions and a one-line Fabric note. English strings say "Horizon Client" instead of "XMCL" except for XMCL's own
   services.

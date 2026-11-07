@@ -225,7 +225,8 @@ export default defineComponent({
 
     const instanceTheme = useInstanceTheme(instance.path)
     provide(kInstanceTheme, instanceTheme)
-    const theme = useTheme(instanceTheme.instanceTheme)
+    // Horizon Client: per-instance themes (XMCL's instance Appearance tab) don't override Horizon's look.
+    const theme = useTheme(ref(undefined))
     provide(kTheme, theme)
     const surfaceTokens = useSurfaceTokens()
     provide(kSurfaceTokens, surfaceTokens)
@@ -283,8 +284,9 @@ export default defineComponent({
       kCustomCss,
       useCustomCss({
         currentTheme: theme.currentTheme,
-        instanceTheme: instanceTheme.instanceTheme,
-        instanceCss: instanceTheme.customCss,
+        // Horizon Client: no per-instance theme or CSS (see useTheme above).
+        instanceTheme: ref(undefined),
+        instanceCss: ref(''),
         suppressed: theme.suppressed,
       }),
     )

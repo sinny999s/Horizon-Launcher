@@ -141,6 +141,8 @@
       @update:model-value="replaceNative = !$event ? false : $event"
     />
 
+    <!-- Horizon Client: no XMCL AI agent (it needs an XMCL subscription or your own AI key). -->
+    <template v-if="false">
     <v-divider class="my-3" />
 
     <SettingItem id="agent-settings" :title="t('setting.aiAgentApiKey')" :description="t('setting.aiAgentApiKeyDescription')">
@@ -233,6 +235,7 @@
           />
         </template>
     </SettingItem>
+    </template>
   </SettingCard>
 </template>
 

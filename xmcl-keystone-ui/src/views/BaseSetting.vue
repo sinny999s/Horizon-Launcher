@@ -89,9 +89,6 @@
           <template v-else-if="targetQuery === 'advanced'">
             <BaseSettingAdvanced />
           </template>
-          <template v-else-if="targetQuery === 'appearance'">
-            <BaseSettingAppearance />
-          </template>
           <template v-else-if="targetQuery === 'server' && !isBedrock">
             <BaseSettingServerManage />
           </template>
@@ -164,7 +161,6 @@ import BaseSettingServerManage from './BaseSettingServerManage.vue'
 import BaseSettingAdvanced from './BaseSettingAdvanced.vue'
 import { useInstanceModpackMetadata } from '@/composables/instanceModpackMetadata'
 import BaseSettingModpackFiles from './BaseSettingModpackFiles.vue'
-import BaseSettingAppearance from './BaseSettingAppearance.vue'
 import BaseSettingModUpgradeDialog from './BaseSettingModUpgradeDialog.vue'
 import BaseSettingModrinthProject from './BaseSettingModrinthProject.vue'
 import { BaseSettingModUpgradeDialogKey } from '@/composables/instanceUpdate'
@@ -239,7 +235,7 @@ const sections = computed(() => [
     ] : []),
     { value: 'server', title: t('server.launch'), icon: 'dns' },
   ] : []),
-  { value: 'appearance', title: t('setting.appearance'), icon: 'invert_colors' },
+  // Horizon Client: no per-instance Appearance (themes); the launcher has Horizon's one look.
 ])
 const activeSection = computed(() => targetQuery.value === 'general' ? '' : targetQuery.value || '')
 const router = useRouter()
