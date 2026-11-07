@@ -18,16 +18,16 @@ import { InjectionKey, Ref, ref, watchEffect } from 'vue'
 /** Border radius (px). Matches Vuetify's `rounded="xl"`. */
 export const DEFAULT_SURFACE_RADIUS = 16
 /** Dialog shell radius (px). Keeps legacy 32px look at factor=1. */
-export const DEFAULT_SURFACE_DIALOG_RADIUS = 32
+export const DEFAULT_SURFACE_DIALOG_RADIUS = 22
 
 /** Vuetify `rounded` prop value equivalent to `DEFAULT_SURFACE_RADIUS`. */
 export const DEFAULT_SURFACE_RADIUS_PROP = 'xl' as const
 
-export const DEFAULT_SURFACE_BORDER = '1px solid rgba(var(--v-theme-on-surface), 0.10)'
+export const DEFAULT_SURFACE_BORDER = '1px solid rgba(255, 255, 255, 0.08)'
 export const DEFAULT_SURFACE_SHADOW = '0 12px 40px -8px rgba(0, 0, 0, 0.35)'
 
 /** Frosted-glass background shared by dialogs, menus and popovers. */
-export const DEFAULT_SURFACE_BG = 'rgba(var(--v-theme-surface), 0.82)'
+export const DEFAULT_SURFACE_BG = 'rgba(17, 17, 21, 0.86)'
 export const DEFAULT_SURFACE_BLUR = 48
 
 /** Menu-only: inner padding and list-item radius. */

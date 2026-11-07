@@ -82,7 +82,7 @@
       @click="tutor.start()"
     />
     <AppSystemBarBadge
-      v-if="!noDebug"
+      v-if="false && !noDebug"
       id="feedback-button"
       icon="bug_report"
       :text="t('feedback.name')"

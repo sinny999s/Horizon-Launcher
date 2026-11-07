@@ -28,6 +28,17 @@ The repo pins pnpm 11.10.0 and its scripts call `pnpm` again, so a global pnpm 1
 - OS link scheme `horizonclient://` (XMCL: `xmcl://`). Inside the app, requests still use `xmcl://`.
 - The game is told its launcher is "Horizon Client (version)".
 
+**Look** (taken from the mod's ClickGUI, `design/clickgui` in horizon-main)
+- `xmcl-keystone-ui/src/assets/horizon.css`: Horizon's SF font (`assets/horizon/sf_*.ttf`, copied from the mod),
+  colour tokens, the grey backdrop with a faint wordmark, the red launch pill, tinted-glass primary buttons, inputs,
+  scrollbars, tooltips.
+- `views/AppSideBarHorizon.vue` (+ `AppSideBarHorizonInstance.vue`) replaces XMCL's icon rail: wordmark, Menu rows
+  (Play, Browse mods, Accounts & skins, Play together, Settings), the instance list with versions, the account card.
+  XMCL's sidebar style and position settings no longer apply.
+- Theme defaults (`composables/theme.ts`) and Vuetify's dark palette are Horizon's. On first start a build switches to
+  Horizon's theme once (`localStorage.horizonTheme`); the XMCL import no longer copies XMCL's theme.
+- XMCL's Feedback button is hidden (it reports to XMCL).
+
 **Only Fabric, Minecraft 26.3+** (`xmcl-runtime-api/src/horizon.ts`)
 - The Minecraft list holds releases from 26.3 up that Fabric's meta lists. Snapshots and older versions are hidden.
   A new release (26.4...) appears on its own once Mojang releases it and Fabric supports it.

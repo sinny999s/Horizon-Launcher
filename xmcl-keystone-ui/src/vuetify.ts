@@ -100,9 +100,15 @@ export const vuetify = createVuetify({
       system: {},
       dark: {
         dark: true,
+        // Horizon Client: Horizon's red and the ClickGUI's near-black glass.
         colors: {
-          primary: '#4caf50',
-          accent: '#00e676',
+          primary: '#f43838',
+          accent: '#ef4747',
+          background: '#08080a',
+          surface: '#131316',
+          'surface-bright': '#1c1c21',
+          'surface-variant': '#26262c',
+          secondary: '#9a9aa5',
         },
       },
     },

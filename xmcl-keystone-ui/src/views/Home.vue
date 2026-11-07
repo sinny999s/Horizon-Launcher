@@ -141,10 +141,6 @@ useTutorial(
         element: '#launch-button',
         popover: { title: t('launch.launch'), description: t('tutorial.launchDescription') },
       },
-      {
-        element: '#feedback-button',
-        popover: { title: t('feedback.name'), description: t('tutorial.feedbackDescription') },
-      },
     ]
     return steps
   }),

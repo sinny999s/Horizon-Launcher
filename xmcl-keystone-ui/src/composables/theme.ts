@@ -10,6 +10,10 @@ import { useService } from './service'
 
 export const kTheme: InjectionKey<ReturnType<typeof useTheme>> = Symbol('theme')
 
+/** Horizon Client: bump the version to move everyone onto a changed default theme once. */
+const HORIZON_THEME_KEY = 'horizonTheme'
+const HORIZON_THEME_VERSION = '1'
+
 export enum ParticleMode {
   PUSH = 'push',
   REMOVE = 'remove',
@@ -80,23 +84,24 @@ export interface UIThemeDataV1 {
 
 export function getDefaultTheme(): UIThemeDataV1 {
   return {
-    dark: 'system',
+    dark: true,
     backgroundMusic: [],
     backgroundMusicPlayOrder: 'sequential',
     colors: {
       lightAppBarColor: '#e0e0e0FF',
       lightSideBarColor: '#FFFFFFFF',
-      darkAppBarColor: '#111111FF',
-      darkSideBarColor: '#11111166',
-      darkPrimaryColor: '#4caf50',
-      darkBackground: '#121212A5',
+      // Horizon Client: Horizon's colours (the ClickGUI's red and near-black glass).
+      darkAppBarColor: '#00000000',
+      darkSideBarColor: '#14141899',
+      darkPrimaryColor: '#f43838',
+      darkBackground: '#08080a00',
       darkInfoColor: '#2196F3',
       darkErrorColor: '#FF5252',
       darkWarningColor: '#FB8C00',
 
-      darkSuccessColor: '#4CAF50',
-      darkAccentColor: '#00e676',
-      darkCardColor: '#0c0c0ccc',
+      darkSuccessColor: '#34d77b',
+      darkAccentColor: '#ef4747',
+      darkCardColor: '#131316b8',
       lightPrimaryColor: '#1976D2',
       lightBackground: '#FFFFFF',
       lightInfoColor: '#2196F3',
@@ -831,10 +836,24 @@ export function useTheme(
     if (!theme) {
       theme = getDefaultTheme()
     }
+    // Horizon Client: switch to Horizon's theme once, replacing a theme imported from XMCL or saved by an
+    // older build. Themes picked or edited after that are kept.
+    let resetToHorizon = false
+    try {
+      if (localStorage.getItem(HORIZON_THEME_KEY) !== HORIZON_THEME_VERSION) {
+        theme = getDefaultTheme()
+        localStorage.setItem(HORIZON_THEME_KEY, HORIZON_THEME_VERSION)
+        resetToHorizon = true
+      }
+    } catch { }
 
     normalizeThemeColors(theme)
 
     currentTheme.value = theme
+
+    if (resetToHorizon) {
+      saveCurrentTheme().catch((e) => console.error('Failed to save the Horizon theme', e))
+    }
 
     if (migratedFromLegacy) {
       // Persist the migrated theme to the backend, then clear the legacy
@@ -1018,7 +1037,7 @@ export function useTheme(
     font-size: ${fontSize.value}px;
   }
   .v-application {
-    font-family: 'custom', 'Roboto', sans-serif;
+    font-family: 'custom', 'SF', 'Segoe UI', sans-serif;
   }
   `,
     ),

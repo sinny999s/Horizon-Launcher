@@ -2,7 +2,7 @@
  * Horizon Client: one-time import from an existing X Minecraft Launcher install.
  *
  * On the first start (no `user.json` in our data folder and no import marker) this copies the user's
- * XMCL accounts, saved skins, launcher settings and theme, plus every Minecraft 26.3+ Fabric instance.
+ * XMCL accounts, saved skins and launcher settings, plus every Minecraft 26.3+ Fabric instance.
  * XMCL's own files are only read, never changed.
  *
  * Account tokens are encrypted with Electron `safeStorage`, whose key lives in the `os_crypt` section of
@@ -20,8 +20,9 @@ import { DEFAULT_GAME_FOLDER, LAUNCHER_NAME } from '@xmcl/runtime/constant'
 const MARKER = '.xmcl-import.json'
 
 /** Files and folders copied from XMCL's data folder as they are. */
-const COPIED_FILES = ['user.json', 'user.json.backup', 'user.json.meta', 'setting.json', 'java.json', 'theme.json']
-const COPIED_DIRS = ['closet', 'theme-media']
+// XMCL's theme isn't copied: the launcher has Horizon's own look.
+const COPIED_FILES = ['user.json', 'user.json.backup', 'user.json.meta', 'setting.json', 'java.json']
+const COPIED_DIRS = ['closet']
 
 /** Instance sub-folders left behind: caches, logs and old backups the game rebuilds or doesn't need. */
 const SKIPPED_INSTANCE_DIRS = new Set(['.fabric', 'logs', 'crash-reports', 'libraries.bk', 'versions.bk', '.install-profile'])

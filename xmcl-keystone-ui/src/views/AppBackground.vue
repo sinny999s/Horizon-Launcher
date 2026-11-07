@@ -1,5 +1,9 @@
 <template>
   <div class="absolute z-0 h-full w-full">
+    <!-- Horizon Client: the grey backdrop, under any custom background. -->
+    <div class="hz-backdrop">
+      <div class="hz-backdrop__lines" />
+    </div>
     <transition
       name="fade-transition"
     >
@@ -52,7 +56,7 @@
       name="fade-transition"
     >
       <div
-        v-if="((backgroundColorOverlay && !isHome) || backgroundType === BackgroundType.NONE) && !customBackgroundVideo"
+        v-if="backgroundColorOverlay && !isHome && backgroundType !== BackgroundType.NONE && !customBackgroundVideo"
         class="z-3 absolute h-full w-full"
         :style="{ 'background': backgroundColor }"
       />

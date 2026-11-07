@@ -6,13 +6,12 @@
       'background-image': `linear-gradient(${appBarColor} 0%, color-mix(in srgb, ${appBarColor}, transparent) 65%, transparent 100%)`
     }">
     </div>
-    <AppSystemBar v-if="!isBigPicture" :back="sidebarStyle === 'notch'" />
+    <AppSystemBar v-if="!isBigPicture" />
     <div
       class="app-layout flex-grow relative flex overflow-auto"
       :class="[layoutClasses, { 'workspace-side-panel-attached': hasAttachedWorkspacePanel }]"
     >
-      <AppSideBarClassic v-if="sidebarStyle === 'classic'" />
-      <AppSideBarNotch v-else />
+      <AppSideBarHorizon />
       <main class="relative flex max-h-full flex-1 flex-col overflow-auto" :class="mainClasses">
         <router-view v-slot="{ Component }">
           <transition name="fade-transition" mode="out-in">
@@ -52,6 +51,7 @@
 
 <script lang=ts setup>
 import '@/assets/common.css'
+import '@/assets/horizon.css'
 import AppImageDialog from '@/components/AppImageDialog.vue'
 import InstanceScreenshots from '@/views/InstanceScreenshots.vue'
 import AppSharedTooltip from '@/components/AppSharedTooltip.vue'
@@ -83,8 +83,7 @@ import AppMultiplayerLoginDialog from '@/views/AppMultiplayerLoginDialog.vue'
 import AppUnauthenticatedWarningDialog from '@/views/AppUnauthenticatedWarningDialog.vue'
 import UserProfileDialog from '@/components/UserProfileDialog.vue'
 import AppNotifier from '@/views/AppNotifier.vue'
-import AppSideBarClassic from '@/views/AppSideBarClassic.vue'
-import AppSideBarNotch from '@/views/AppSideBarNotch.vue'
+import AppSideBarHorizon from '@/views/AppSideBarHorizon.vue'
 import AppSystemBar from '@/views/AppSystemBar.vue'
 import Setup from '@/views/Setup.vue'
 import { useLocalStorage, useMediaQuery, usePreferredColorScheme, usePreferredDark } from '@vueuse/core'
@@ -184,8 +183,8 @@ provide(kMultiplayerEntry, useMultiplayerEntry())
 
 const sidebarSettings = useSidebarSettings()
 provide(kSidebarSettings, sidebarSettings)
-const sidebarPosition = computed(() => sidebarSettings.position.value)
-const sidebarStyle = computed(() => sidebarSettings.style.value)
+// Horizon Client: one sidebar, always on the left (XMCL's sidebar position and style settings don't apply).
+const sidebarPosition = computed(() => 'left' as string)
 
 const layoutClasses = computed(() => ({
   'flex-row': sidebarPosition.value === 'left' || sidebarPosition.value === 'right',
