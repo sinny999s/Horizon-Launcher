@@ -1,4 +1,5 @@
 import { recoverRestore } from '~/infra/recoverRestore'
+import { updateHorizonMod } from '~/horizon/horizonMods'
 import { getRestoreGate } from '~/infra/restoreGate'
 import { MinecraftFolder, type LaunchOption as ResolvedLaunchOptions, type ResolvedVersion, type ServerOptions, type ResolvedServerVersion, createMinecraftProcessWatcher, generateArguments, generateArgumentsServer, launch, launchServer } from '@xmcl/core'
 import { AUTHORITY_DEV, type CreateLaunchShortcutOptions, type GameProcess, type LaunchService as ILaunchService, LaunchException, type LaunchOptions, LaunchServiceKey } from '@xmcl/runtime-api'
@@ -409,6 +410,11 @@ export class LaunchService extends AbstractService implements ILaunchService {
       let version: ResolvedVersion | ResolvedServerVersion | undefined
       const operationId = options.operationId || randomUUID()
       const launchId = randomUUID()
+
+      // Horizon Client: put the newest Horizon build into the instance (if it has Horizon turned on).
+      if (side === 'client' && options.gameDirectory) {
+        await updateHorizonMod(this.app, this, options.gameDirectory)
+      }
 
       try {
         if (side === 'client') {

@@ -102,6 +102,12 @@ export interface InstanceService {
    */
   createInstance(option: CreateInstanceOption): Promise<string>
   /**
+   * Horizon Client: adds Horizon to an existing instance, plus Fabric API and Fabric Language Kotlin when they
+   * are missing. Does nothing to a Horizon jar that is already there (turned on or off).
+   * @param path The instance path
+   */
+  addHorizon(path: string): Promise<void>
+  /**
    * Delete the managed instance from the disk
    * @param path The instance path
    */

@@ -73,6 +73,16 @@ The repo pins pnpm 11.10.0 and its scripts call `pnpm` again, so a global pnpm 1
 - The Horizon jar comes from `xmcl-electron-app/horizon-mod/` (shipped as `resources/horizon-mod/`). The jar for an
   instance's Minecraft version is used: `horizon-<minecraft>-<version>.jar`. `pnpm --prefix=xmcl-electron-app horizon:mod`
   copies the newest one from `../horizon-main/kotlin-client/build/libs`.
+- **Always the newest Horizon:** before every launch (`LaunchService.launch` → `updateHorizonMod`), an instance
+  that has Horizon turned on gets the newest jar for its Minecraft version from: a Horizon build folder
+  (`HORIZON_BUILD_DIR`, `buildDir` in `<launcher data>/horizon.json`, or `~/Downloads/horizon-main/kotlin-client/build/libs`),
+  the latest GitHub release of `HORIZON_GITHUB_REPO` (`sinny999s/Horizon-2.1`; the jar asset, checked against its
+  sha256 digest), the release manifest, or the bundled jar. A higher version replaces it; from a build folder the same version
+  with different bytes (a rebuild) does too. Turned-off or missing Horizon is left alone; a locked jar (game
+  running) is skipped and the game launches with what it has. New instances and "Add Horizon" use the same choice.
+- **Add Horizon:** the Overview of an instance without Horizon has an "Add Horizon" button
+  (`InstanceService.addHorizon`, which also adds Fabric API and Fabric Language Kotlin when missing), or
+  "Turn Horizon on" when its jar is there but disabled.
 - **Release hook:** set `HORIZON_RELEASE_MANIFEST_URL` in `horizonMods.ts` (or the environment variable of the same name)
   to a JSON file like
   `{ "mods": [{ "minecraft": "26.3", "version": "2.0.5", "url": "https://.../horizon-26.3-2.0.5.jar", "sha1": "..." }] }`.

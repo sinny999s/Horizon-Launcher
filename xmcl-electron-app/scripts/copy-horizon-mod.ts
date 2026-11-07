@@ -2,7 +2,7 @@
  * Copies the Horizon mod jar into horizon-mod/ so it's bundled with the launcher.
  * Source: $HORIZON_MOD_JAR, else the newest horizon-26.3-*.jar built by ../../horizon-main/kotlin-client.
  */
-import { copyFileSync, existsSync, mkdirSync, readdirSync } from 'fs'
+import { copyFileSync, existsSync, mkdirSync, readdirSync, unlinkSync } from 'fs'
 import { basename, join, resolve } from 'path'
 
 const target = resolve(__dirname, '..', 'horizon-mod')
@@ -19,5 +19,9 @@ if (!source) {
   source = join(libs, jars[jars.length - 1])
 }
 mkdirSync(target, { recursive: true })
+// Only one Horizon jar ships: drop older ones bundled before.
+for (const old of readdirSync(target)) {
+  if (/^horizon-.+\.jar$/.test(old) && old !== basename(source)) unlinkSync(join(target, old))
+}
 copyFileSync(source, join(target, basename(source)))
 console.log(`Bundled ${basename(source)} -> ${target}`)

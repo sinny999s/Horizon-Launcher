@@ -13,6 +13,18 @@
         <p class="hz-hero__text">
           {{ heroText }}
         </p>
+        <button
+          v-if="!horizonMod"
+          type="button"
+          class="hz-btn hz-hero__add"
+          data-testid="add-horizon"
+          :disabled="addingHorizon"
+          @click="addHorizon"
+        >
+          <v-progress-circular v-if="addingHorizon" indeterminate :size="14" :width="2" />
+          <v-icon v-else>add</v-icon>
+          {{ disabledHorizon ? 'Turn Horizon on' : 'Add Horizon' }}
+        </button>
         <div class="hz-hero__stats">
           <div v-for="s of stats" :key="s.label" class="hz-stat">
             <span class="hz-label">{{ s.label }}</span>
@@ -107,15 +119,18 @@ import { useLaunchButton } from '@/composables/launchButton'
 import { kCompact } from '@/composables/scrollTop'
 import { useTutorial } from '@/composables/tutorial'
 import { useInFocusMode } from '@/composables/uiLayout'
+import { useNotifier } from '@/composables/notifier'
+import { useService } from '@/composables/service'
 import { injection } from '@/util/inject'
+import { InstanceServiceKey } from '@xmcl/runtime-api'
 import type { DriveStep } from 'driver.js'
 import HomeCriticalError from './HomeCriticalError.vue'
 import HorizonPlayButton from './HorizonPlayButton.vue'
 
 const { t } = useI18n()
 const router = useRouter()
-const { instance, runtime, name } = injection(kInstance)
-const { enabledMods } = injection(kInstanceModsContext)
+const { instance, runtime, name, path } = injection(kInstance)
+const { enabledMods, mods, enable, revalidate } = injection(kInstanceModsContext)
 const { saves } = injection(kInstanceSave)
 
 // XMCL's dashboard/focus switch doesn't exist here: keep its state on "focus" so other code that reads it agrees.
@@ -128,6 +143,30 @@ const compact = injection(kCompact)
 onMounted(() => { compact.value = false })
 
 const horizonMod = computed(() => enabledMods.value.find(m => m.modId === 'horizon'))
+/** A Horizon jar that's in the instance but turned off. */
+const disabledHorizon = computed(() => mods.value.find(m => m.modId === 'horizon' && !m.enabled))
+
+// "Add Horizon": turn a disabled Horizon back on, or install Horizon (plus Fabric API and Fabric Language Kotlin
+// when missing) into an instance that never had it.
+const { addHorizon: addHorizonToInstance } = useService(InstanceServiceKey)
+const { notify } = useNotifier()
+const addingHorizon = ref(false)
+async function addHorizon() {
+  if (addingHorizon.value) return
+  addingHorizon.value = true
+  try {
+    if (disabledHorizon.value) {
+      await enable({ path: path.value, files: [disabledHorizon.value.path] })
+    } else {
+      await addHorizonToInstance(path.value)
+      await revalidate()
+    }
+  } catch (e) {
+    notify({ level: 'error', title: 'Couldn\'t add Horizon', body: String((e as any)?.message ?? e) })
+  } finally {
+    addingHorizon.value = false
+  }
+}
 const shownMods = computed(() => {
   const list = [...enabledMods.value].sort((a, b) => (a.modId === 'horizon' ? -1 : b.modId === 'horizon' ? 1 : a.name.localeCompare(b.name)))
   return list.slice(0, 7)
@@ -136,7 +175,11 @@ const recentSaves = computed(() => [...saves.value].sort((a, b) => (b.lastPlayed
 
 const heroTitle = computed(() => instance.value.lastPlayedDate ? 'Jump back in' : 'Ready when you are')
 const heroText = computed(() => {
-  if (!horizonMod.value) return 'Horizon isn\'t enabled in this instance. Turn it on in Mods.'
+  if (!horizonMod.value) {
+    return disabledHorizon.value
+      ? 'Horizon is turned off in this instance.'
+      : 'This instance doesn\'t have Horizon yet.'
+  }
   return `${name.value || 'This instance'} runs Minecraft ${runtime.value.minecraft} with Fabric ${runtime.value.fabricLoader || ''}.`
 })
 
@@ -238,6 +281,7 @@ useTutorial(computed(() => {
 }
 .hz-stat b { font: 600 14px var(--hz-font); font-variant-numeric: tabular-nums; }
 .hz-hero__play { flex: none; }
+.hz-hero__add { margin-top: 12px; height: 30px; padding: 0 12px; font-size: 12px; }
 
 .hz-overview__grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
 @media (max-width: 1000px) { .hz-overview__grid { grid-template-columns: 1fr; } }

@@ -390,6 +390,12 @@ export class InstanceService extends StatefulService<InstanceState> implements I
     payload.version = ''
   }
 
+  async addHorizon(path: string): Promise<void> {
+    const instance = this.state.all[path]
+    if (!instance) throw new AnyError('InstanceNotFoundError', `Fail to find ${path}`)
+    await installHorizonMods(this.app, this, path, instance.runtime.minecraft)
+  }
+
   async createInstance(payload: CreateInstanceOptions): Promise<string> {
     requireObject(payload)
 
