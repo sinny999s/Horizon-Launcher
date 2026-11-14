@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-const autoUpdater = vi.hoisted(() => ({ autoDownload: true, autoInstallOnAppQuit: true, allowPrerelease: false }))
+const autoUpdater = vi.hoisted(() => ({ autoDownload: true, autoInstallOnAppQuit: true, allowPrerelease: false, setFeedURL: vi.fn() } as Record<string, any>))
+const host = (env: string, os = 'linux') => ({ env, platform: { os }, getLogger: () => ({ log: vi.fn(), warn: vi.fn(), error: vi.fn() }) })
 vi.mock('electron-updater', () => ({ autoUpdater }))
 vi.mock('~/settings', () => ({ kSettings: Symbol('settings') }))
 import { pluginAutoUpdate } from './pluginAutoUpdate'
@@ -15,7 +16,7 @@ describe('auto-update settings wiring', () => {
       updateStatusSet: vi.fn(),
       subscribe: vi.fn((name, handler) => { handlers[name] = handler; return state }),
     }
-    await pluginAutoUpdate({ env: 'appimage', registry: { get: async () => state } } as any, {} as any)
+    await pluginAutoUpdate({ ...host('appimage'), registry: { get: async () => state } } as any, {} as any)
     expect(autoUpdater.autoDownload).toBe(true)
     expect(autoUpdater.autoInstallOnAppQuit).toBe(true)
     state.appImageUpdateMode = 'external'
@@ -41,7 +42,7 @@ describe('auto-update settings wiring', () => {
     autoUpdater.autoDownload = autoUpdater.autoInstallOnAppQuit = true
     let resolve!: (value: typeof state) => void
     const waiting = new Promise<typeof state>((r) => { resolve = r })
-    const initialized = pluginAutoUpdate({ env, registry: { get: () => waiting } } as any, {} as any)
+    const initialized = pluginAutoUpdate({ ...host(env), registry: { get: () => waiting } } as any, {} as any)
     expect(autoUpdater.autoDownload).toBe(false)
     expect(autoUpdater.autoInstallOnAppQuit).toBe(false)
     resolve(state)
@@ -57,5 +58,30 @@ describe('auto-update settings wiring', () => {
     expect(autoUpdater.autoInstallOnAppQuit).toBe(env !== 'appimage')
     handlers.allowPrereleaseSet(false)
     expect(autoUpdater.allowPrerelease).toBe(false)
+  })
+
+  it('always installs a downloaded update on quit on Windows and leaves the download to BaseService', async () => {
+    vi.stubEnv('XMCL_E2E', '')
+    const handlers: Record<string, (value: any) => void> = {}
+    const state = {
+      autoDownload: true, autoInstallOnAppQuit: false, allowPrerelease: false,
+      subscribe: vi.fn((name, handler) => { handlers[name] = handler; return state }),
+    }
+    await pluginAutoUpdate({ ...host('raw', 'windows'), registry: { get: async () => state } } as any, {} as any)
+    expect(autoUpdater.autoDownload).toBe(false)
+    expect(autoUpdater.autoInstallOnAppQuit).toBe(true)
+    expect(autoUpdater.disableWebInstaller).toBe(true)
+    handlers.config({ autoDownload: true, autoInstallOnAppQuit: false, allowPrerelease: false })
+    expect(autoUpdater.autoDownload).toBe(false)
+    expect(autoUpdater.autoInstallOnAppQuit).toBe(true)
+    expect(autoUpdater.setFeedURL).not.toHaveBeenCalled()
+  })
+
+  it('reads updates from HORIZON_UPDATE_URL when it is set', async () => {
+    vi.stubEnv('XMCL_E2E', '')
+    vi.stubEnv('HORIZON_UPDATE_URL', 'http://127.0.0.1:47123/')
+    const state = { autoDownload: false, autoInstallOnAppQuit: false, allowPrerelease: false, subscribe: vi.fn(() => state) }
+    await pluginAutoUpdate({ ...host('raw', 'windows'), registry: { get: async () => state } } as any, {} as any)
+    expect(autoUpdater.setFeedURL).toHaveBeenCalledWith({ provider: 'generic', url: 'http://127.0.0.1:47123/' })
   })
 })

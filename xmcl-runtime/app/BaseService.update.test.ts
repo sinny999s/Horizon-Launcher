@@ -79,6 +79,31 @@ describe('launcher update state', () => {
     expect(settings.updateStatus).toBe('none')
   })
 
+  it('downloads an update found by a background check right away', async () => {
+    const { service, settings, updater } = setup()
+    await service.checkUpdateInBackground()
+    await vi.waitFor(() => expect(settings.updateStatus).toBe('ready'))
+    expect(updater.downloadUpdate).toHaveBeenCalledOnce()
+  })
+
+  it('leaves a manual update (download page) to the user', async () => {
+    const { service, settings, updater, info } = setup()
+    updater.checkUpdateTask.mockResolvedValue({ ...info, operation: 'manual' })
+    await service.checkUpdateInBackground()
+    expect(settings.updateStatus).toBe('pending')
+    expect(updater.downloadUpdate).not.toHaveBeenCalled()
+  })
+
+  it('keeps a downloaded update ready when a later check finds the same version again', async () => {
+    const { service, settings, updater, info } = setup()
+    settings.updateInfoSet(info)
+    settings.updateStatusSet('ready')
+    updater.checkUpdateTask.mockResolvedValue({ ...info })
+    await service.checkUpdateInBackground()
+    expect(settings.updateStatus).toBe('ready')
+    expect(updater.downloadUpdate).not.toHaveBeenCalled()
+  })
+
   it('marks newly discovered metadata pending', async () => {
     const { service, settings } = setup()
     await service.checkUpdate()

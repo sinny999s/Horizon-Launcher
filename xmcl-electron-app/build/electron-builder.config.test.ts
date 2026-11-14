@@ -33,3 +33,13 @@ describe('Linux system packaging', () => {
     expect(profile).toContain('userns,')
   })
 })
+
+describe('Horizon Client update feed', () => {
+  it('publishes to the launcher repository on GitHub', () => {
+    expect(config.publish).toEqual({ provider: 'github', owner: 'sinny999s', repo: 'Horizon-Launcher', releaseType: 'release' })
+  })
+
+  it('names no publisher while the exe is unsigned, so electron-updater accepts the update', () => {
+    expect(config.win.signtoolOptions).not.toHaveProperty('publisherName')
+  })
+})

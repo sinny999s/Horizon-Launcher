@@ -25,10 +25,15 @@ export const config = {
     name: 'Horizon Client',
     schemes: ['horizonclient'],
   },
-  // assign publish for auto-updater
-  // set this to your own repo!
-  // Horizon Client: no update feed yet. Point this at the Horizon release repo to turn on auto-update.
-  publish: null,
+  // Horizon Client: the update feed. electron-builder writes it into resources/app-update.yml and writes
+  // latest.yml next to the installer; a release of this repository carries the installer, its .blockmap and
+  // latest.yml (build.ts never publishes by itself).
+  publish: {
+    provider: 'github',
+    owner: 'sinny999s',
+    repo: 'Horizon-Launcher',
+    releaseType: 'release',
+  },
   files: [{
     from: 'dist',
     to: '.',
@@ -92,9 +97,10 @@ export const config = {
     },
   },
   win: {
+    // Horizon Client: no publisherName while the exe is unsigned. electron-updater checks a downloaded update's
+    // signature against it and would refuse every update. Add it back together with a code-signing certificate.
     signtoolOptions: {
       certificateFile: undefined as string | undefined,
-      publisherName: 'Horizon',
     },
     icon: 'icons/dark.ico',
     electronLanguages: ['en-US'],

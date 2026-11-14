@@ -1,8 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-// Horizon Client turns updates off unless this is set; these tests cover the update logic itself.
-process.env.HORIZON_ENABLE_UPDATES = '1'
-
 const mocks = vi.hoisted(() => ({
   getFeedURL: vi.fn(), checkForUpdates: vi.fn(), downloadUpdate: vi.fn(), quitAndInstall: vi.fn(), openExternal: vi.fn(),
 }))
@@ -15,12 +12,12 @@ vi.mock('electron-updater', () => ({
 vi.mock('~/infra', () => ({ kGFW: Symbol('gfw') }))
 vi.mock('~/settings', () => ({ kSettings: Symbol('settings') }))
 vi.mock('./elevate', () => ({ ensureElevateExe: vi.fn() }))
-import { ElectronUpdater } from './updater'
+import { ElectronUpdater, HORIZON_LAUNCHER_REPO, isNewerVersion } from './updater'
 
 const staleRelease = { name: '0.74.0', date: '', body: '', files: [], newUpdate: true, operation: 'autoupdater' }
-function createApp(env = 'appimage') {
+function createApp(env = 'appimage', os = 'linux') {
   return {
-    env, version: '0.73.0', platform: { os: 'linux' },
+    env, version: '0.73.0', platform: { os },
     getLogger: () => ({ log: vi.fn(), warn: vi.fn(), error: vi.fn() }),
     registry: { get: vi.fn<() => Promise<any>>().mockResolvedValue({ allowPrerelease: false, locale: 'en' }) },
     fetch: vi.fn().mockResolvedValue({ ok: true, json: async () => ({
@@ -88,5 +85,83 @@ describe('AppImage external update boundary', () => {
     expect(mocks.downloadUpdate).not.toHaveBeenCalled()
     expect(mocks.quitAndInstall).not.toHaveBeenCalled()
     expect(mocks.openExternal).toHaveBeenCalledTimes(2)
+  })
+})
+
+describe('Horizon Client updates (GitHub releases of the launcher repository)', () => {
+  beforeEach(() => vi.clearAllMocks())
+  afterEach(() => vi.unstubAllEnvs())
+  const latest = (version: string, isUpdateAvailable: boolean) => ({
+    isUpdateAvailable,
+    updateInfo: { version, releaseNotes: 'notes', releaseDate: '', files: [{ url: `horizon-client-${version}-setup.exe` }] },
+  })
+
+  it('updates the installed Windows build through electron-updater', async () => {
+    mocks.checkForUpdates.mockResolvedValue(latest('1.0.1', true))
+    const app = createApp('raw', 'windows')
+    const updater = new ElectronUpdater(app as any)
+    expect(await updater.checkUpdateTask()).toMatchObject({ name: '1.0.1', operation: 'autoupdater', newUpdate: true })
+    expect(app.fetch).not.toHaveBeenCalled()
+    const release = await updater.checkUpdateTask()
+    await updater.downloadUpdate(release)
+    expect(mocks.downloadUpdate).toHaveBeenCalledOnce()
+    await updater.installUpdateAndQuit(release)
+    // Silent install, then the new version starts.
+    expect(mocks.quitAndInstall).toHaveBeenCalledWith(true, true)
+  })
+
+  it("takes electron-updater's word that an older or equal release is no update", async () => {
+    mocks.checkForUpdates.mockResolvedValue(latest('0.72.0', false))
+    const updater = new ElectronUpdater(createApp('raw', 'windows') as any)
+    expect(await updater.checkUpdateTask()).toMatchObject({ newUpdate: false })
+  })
+
+  it('sends the portable exe to the release page instead of installing', async () => {
+    vi.stubEnv('PORTABLE_EXECUTABLE_FILE', 'C:/Games/horizon-client-0.73.0-portable.exe')
+    const app = createApp('raw', 'windows')
+    const updater = new ElectronUpdater(app as any)
+    const release = await updater.checkUpdateTask()
+    expect(release).toMatchObject({ name: 'v0.74.0', operation: 'manual', newUpdate: true })
+    expect(mocks.checkForUpdates).not.toHaveBeenCalled()
+    expect(app.fetch).toHaveBeenCalledWith(`https://api.github.com/repos/${HORIZON_LAUNCHER_REPO}/releases/latest`, expect.anything())
+    await updater.downloadUpdate(release)
+    expect(mocks.downloadUpdate).not.toHaveBeenCalled()
+    expect(mocks.openExternal).toHaveBeenCalledWith(`https://github.com/${HORIZON_LAUNCHER_REPO}/releases/latest`)
+  })
+
+  it('falls back to the release page for a build without app-update.yml', async () => {
+    mocks.checkForUpdates.mockRejectedValue(Object.assign(new Error('ENOENT: no such file, open app-update.yml'), { code: 'ENOENT', errno: -4058 }))
+    const app = createApp('raw', 'windows')
+    expect(await new ElectronUpdater(app as any).checkUpdateTask()).toMatchObject({ operation: 'manual', newUpdate: true })
+    expect(app.fetch).toHaveBeenCalledOnce()
+  })
+
+  it('reads prereleases from the release list when they are allowed', async () => {
+    vi.stubEnv('PORTABLE_EXECUTABLE_FILE', 'x.exe')
+    const app = createApp('raw', 'windows')
+    app.registry.get.mockResolvedValue({ allowPrerelease: true })
+    app.fetch.mockResolvedValue({ ok: true, json: async () => [
+      { draft: true, tag_name: 'v2.0.0', assets: [] },
+      { draft: false, tag_name: 'v1.1.0-beta.1', body: '', published_at: '', assets: [] },
+    ] })
+    expect(await new ElectronUpdater(app as any).checkUpdateTask()).toMatchObject({ name: 'v1.1.0-beta.1', newUpdate: true })
+    expect(app.fetch).toHaveBeenCalledWith(`https://api.github.com/repos/${HORIZON_LAUNCHER_REPO}/releases?per_page=10`, expect.anything())
+  })
+
+  it('checks nothing with HORIZON_DISABLE_UPDATES', async () => {
+    vi.stubEnv('HORIZON_DISABLE_UPDATES', '1')
+    const app = createApp('raw', 'windows')
+    expect(await new ElectronUpdater(app as any).checkUpdateTask()).toMatchObject({ newUpdate: false })
+    expect(mocks.checkForUpdates).not.toHaveBeenCalled()
+    expect(app.fetch).not.toHaveBeenCalled()
+  })
+
+  it('compares versions as semver', () => {
+    expect(isNewerVersion('v1.0.1', '1.0.0')).toBe(true)
+    expect(isNewerVersion('1.0.10', '1.0.9')).toBe(true)
+    expect(isNewerVersion('1.0.0', '1.0.0')).toBe(false)
+    expect(isNewerVersion('0.73.1', '1.0.0')).toBe(false)
+    expect(isNewerVersion('1.1.0-beta.1', '1.0.0')).toBe(true)
+    expect(isNewerVersion('garbage', '1.0.0')).toBe(false)
   })
 })

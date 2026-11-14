@@ -62,6 +62,24 @@
     </div>
 
     <button
+      v-if="updateStage !== 'none'"
+      type="button"
+      data-testid="launcher-update"
+      class="hz-update non-moveable"
+      :class="updateStage"
+      :disabled="updateStage === 'downloading' || updateBusy"
+      @click="updateAct()"
+    >
+      <v-icon class="hz-update__ico" :size="18">
+        {{ updateRow.icon }}
+      </v-icon>
+      <span class="hz-update__text">
+        <b>{{ updateRow.title }}</b>
+        <small>{{ updateRow.sub }}</small>
+      </span>
+    </button>
+
+    <button
       id="my-stuff-button"
       data-testid="nav-accounts"
       type="button"
@@ -97,6 +115,7 @@
 import PlayerAvatar from '@/components/PlayerAvatar.vue'
 import { useDialog } from '@/composables/dialog'
 import { useDragAutoScroll } from '@/composables/dragAutoScroll'
+import { useHorizonUpdate } from '@/composables/horizonUpdate'
 import { useInstanceGroup } from '@/composables/instanceGroup'
 import { AddInstanceDialogKey } from '@/composables/instanceTemplates'
 import { kUserContext } from '@/composables/user'
@@ -131,6 +150,18 @@ const accountKind = computed(() => {
   if (a === 'microsoft') return 'Microsoft'
   if (a === 'offline') return 'Offline'
   try { return new URL(a).host } catch { return a }
+})
+
+// The launcher's own update, shown above the account card once there is one.
+const { stage: updateStage, version: updateVersion, percent: updatePercent, busy: updateBusy, act: updateAct } = useHorizonUpdate()
+const updateRow = computed(() => {
+  const v = updateVersion.value
+  switch (updateStage.value) {
+    case 'ready': return { icon: 'restart_alt', title: 'Restart to update', sub: `Horizon Client ${v}` }
+    case 'downloading': return { icon: 'downloading', title: 'Downloading update', sub: `${v} · ${updatePercent.value}%` }
+    case 'download': return { icon: 'system_update_alt', title: 'Update available', sub: `${v} · click to download` }
+    default: return { icon: 'open_in_new', title: 'Update available', sub: `${v} · open the download page` }
+  }
 })
 
 const accountMenu = ref<InstanceType<typeof AppSideBarAccountMenu>>()
@@ -270,6 +301,31 @@ useDragAutoScroll(instancesScrollEl)
   font: 500 12.5px var(--hz-font);
 }
 .hz-empty:hover { color: var(--hz-t1); border-color: rgba(255, 255, 255, .2); }
+
+.hz-side .hz-update {
+  margin-top: 10px;
+  padding: 8px 10px;
+  border-radius: 13px;
+  background: var(--hz-fill);
+  border: 1px solid var(--hz-line);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-align: left;
+  transition: background .2s, border-color .2s, filter .2s;
+}
+.hz-update:hover:not(:disabled) { background: var(--hz-fill2); border-color: var(--hz-line2); }
+.hz-side .hz-update:disabled { cursor: default; }
+.hz-side .hz-update.ready {
+  background: linear-gradient(135deg, rgba(244, 56, 56, .17), rgba(239, 71, 71, .05) 70%), rgba(255, 255, 255, .03);
+  border-color: rgba(244, 56, 56, .28);
+}
+.hz-update.ready:hover:not(:disabled) { filter: brightness(1.12); }
+.hz-update__ico { width: 32px; flex: none; color: var(--hz-t2); }
+.hz-update.ready .hz-update__ico { color: #ff9a9a; }
+.hz-update__text { min-width: 0; flex: 1; display: flex; flex-direction: column; line-height: 1.25; }
+.hz-update__text b { font: 600 12.5px var(--hz-font); color: var(--hz-t1); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hz-update__text small { font: 500 11px var(--hz-font); color: var(--hz-t3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 .hz-side .hz-profile {
   margin-top: 10px;

@@ -41,6 +41,9 @@ import { getTracker } from '~/util/taskHelper'
 import { addSteamShortcutToVdf } from './steamShortcut'
 import { writeFile as writeAtomically } from 'atomically'
 
+/** Horizon Client: how often a running launcher looks for a new version of itself. */
+export const UPDATE_CHECK_INTERVAL = 6 * 60 * 60 * 1000
+
 @ExposeServiceKey(BaseServiceKey)
 export class BaseService extends AbstractService implements IBaseService {
   constructor(
@@ -49,6 +52,8 @@ export class BaseService extends AbstractService implements IBaseService {
   ) {
     super(app, async () => {
       await this.checkUpdateInBackground()
+      // Horizon Client: the launcher often stays open for days, so it looks again every few hours.
+      setInterval(() => { this.checkUpdateInBackground() }, UPDATE_CHECK_INTERVAL).unref?.()
     })
   }
 
@@ -304,6 +309,16 @@ export class BaseService extends AbstractService implements IBaseService {
     } catch (error) {
       this.warn('Background update check failed; check updates manually from Settings.')
       this.warn(error)
+      return
+    }
+    // Horizon Client: an update the launcher can install itself is downloaded right away (it shows as a task),
+    // so it only takes a restart. Not awaited: the service is ready before the download finishes.
+    const settings = await this.getSettings()
+    if (settings.updateStatus === 'pending' && settings.updateInfo?.operation === 'autoupdater') {
+      this.downloadUpdate().catch((error) => {
+        this.warn('Background update download failed; it is tried again on the next check.')
+        this.warn(error)
+      })
     }
   }
 
@@ -321,7 +336,8 @@ export class BaseService extends AbstractService implements IBaseService {
         'update.available': info.newUpdate,
         'update.phase': 'check',
       })
-      const ready = settings.updateStatus === 'ready' && settings.updateInfo === info
+      // Horizon Client: the same version counts as the same release (each check returns a new object).
+      const ready = settings.updateStatus === 'ready' && settings.updateInfo?.name === info.name
       settings.updateInfoSet(info)
       settings.updateStatusSet(!info.newUpdate ? 'none' : ready ? 'ready' : 'pending')
     } catch (e) {

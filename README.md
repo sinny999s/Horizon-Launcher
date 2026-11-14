@@ -31,6 +31,9 @@ The exe isn't code-signed yet, so Windows SmartScreen warns on the first run: "M
 - **Microsoft sign-in that stays signed in.** Switching accounts and pressing Play refresh an expired token silently.
 - **Horizon's look**, taken from the mod's ClickGUI: sidebar, cards, the red launch button.
 - **Mods, resource packs and shaders** from Modrinth with one-click install, plus worlds and skins.
+- **Updates itself** from this repository's releases: a new version downloads in the background, then "Restart to
+  update" in the sidebar installs it (or it installs when you close the launcher). Version 0.73.1 can't update
+  itself yet, so install 1.0.0 over it once.
 - **Imports from XMCL** on the first start: accounts, skins, settings and 26.3+ Fabric instances (read-only on XMCL's side).
 
 Launcher data is in `%APPDATA%\horizon-client-launcher` and game data in `~/.horizonclient`, apart from XMCL's.

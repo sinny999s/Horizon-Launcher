@@ -116,9 +116,23 @@ The repo pins pnpm 11.10.0 and its scripts call `pnpm` again, so a global pnpm 1
 - It runs once (`.xmcl-import.json` marks it) and only if this launcher has no accounts yet.
 - `HORIZON_NO_XMCL_IMPORT=1` turns it off.
 
+**Updates itself** (`main/utils/updater.ts`, `main/pluginAutoUpdate.ts`, `xmcl-runtime/app/BaseService.ts`)
+- The feed is the GitHub releases of `sinny999s/Horizon-Launcher` (`publish` in `build/electron-builder.config.ts`,
+  baked into `resources/app-update.yml`). electron-updater reads `latest.yml` from the newest release.
+- At start and every 6 hours the launcher checks. A newer installed-Windows build is downloaded right away (a task in
+  the task list), then the sidebar shows "Restart to update" above the account card. That installs it silently and
+  starts the new version; otherwise it installs silently when the launcher closes.
+- Settings → About shows the state and has "Check for updates".
+- The portable exe, an unpacked build and macOS can't replace themselves: they read the newest release from GitHub's
+  API and offer its download page.
+- No `publisherName` in `win.signtoolOptions`: electron-updater would check the unsigned installer against it and
+  refuse every update. Add it back together with a code-signing certificate.
+- XMCL's own update paths are off: its update server (`api.xmcl.app/latest`), its app.asar swap and its mirror.
+- `HORIZON_DISABLE_UPDATES=1` turns updates off (use it for test copies of the launcher), and `HORIZON_UPDATE_URL=<url>`
+  reads `latest.yml` from another folder instead (for testing an update end to end).
+- Version 0.73.1 (XMCL's number, the first release) had no updater; it has to be replaced by hand once.
+
 **Off until Horizon has its own services**
-- Auto-update. XMCL's feeds would offer XMCL builds. `publish` is `null` in `build/electron-builder.config.ts`, and
-  `ElectronUpdater.checkUpdateTask` reports "no update" unless `HORIZON_ENABLE_UPDATES` is set.
 - Telemetry export. The key in `APP_INSIGHT_KEY` belongs to XMCL's Azure account, so traces and logs aren't exported.
 - Windows targets are only `nsis` and `portable` (x64). XMCL's `zip`, `ia32` and `appx`/Microsoft Store targets are gone.
 
@@ -127,10 +141,19 @@ The repo pins pnpm 11.10.0 and its scripts call `pnpm` again, so a global pnpm 1
 `HORIZON_APP_DATA=<dir>` moves the launcher data folder and `HORIZON_GAME_DATA=<dir>` moves the game folder the
 import creates, e.g. to test the import without touching the real profile.
 
+## Releasing
+
+1. Raise `version` in `package.json` and `xmcl-electron-app/package.json` (semver; installed launchers only take a
+   higher one).
+2. Build with the released Horizon jar bundled, not whatever is in `build/libs`:
+   `$env:HORIZON_MOD_JAR = "<path to the release's horizon-26.3-<ver>.jar>"; powershell -ExecutionPolicy Bypass -File build-horizon.ps1`
+3. Commit, push `main`, and make the release with **all four** files from `xmcl-electron-app/build/output/`:
+   `gh release create vX.Y.Z --title "Horizon Launcher X.Y.Z" horizon-client-X.Y.Z-setup.exe horizon-client-X.Y.Z-setup.exe.blockmap latest.yml horizon-client-X.Y.Z-portable.exe`.
+   Without `latest.yml` installed launchers don't see the release; the blockmap lets them download only what changed.
+
 ## Not done
 
 - Code signing. The installer is unsigned, so SmartScreen warns on first run.
-- Update feed (see above). The version is still XMCL's 0.73.1.
 - The macOS (`.icns`), Linux packages and `deskgap-app` still carry XMCL's names and icons in places. Only Windows was built.
 - The HTTP user agent still names XMCL (`voxelum/x_minecraft_launcher/...`), because XMCL's CurseForge proxy and
   API keys go with it.

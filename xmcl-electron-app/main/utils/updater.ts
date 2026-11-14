@@ -33,8 +33,26 @@ import { checksum } from '~/util/fs'
 import type ElectronLauncherApp from '../ElectronLauncherApp'
 import { ensureElevateExe } from './elevate'
 import { isExternallyUpdatedAppImage } from './appImageUpdatePolicy'
+import { gt as semverGt, valid as semverValid } from 'semver'
 
-const kPatched = Symbol('Patched')
+/**
+ * Horizon Client: the GitHub repository whose releases carry the launcher: the NSIS installer, its blockmap and
+ * `latest.yml` (read by electron-updater, see `publish` in build/electron-builder.config.ts) and the portable exe.
+ */
+export const HORIZON_LAUNCHER_REPO = 'sinny999s/Horizon-Launcher'
+const HORIZON_RELEASES_PAGE = `https://github.com/${HORIZON_LAUNCHER_REPO}/releases/latest`
+
+/** Whether `latest` is a newer version than `current` ("v" prefixes allowed). */
+export function isNewerVersion(latest: string, current: string) {
+  const a = semverValid(latest.replace(/^v/, ''))
+  const b = semverValid(current.replace(/^v/, ''))
+  return !!a && !!b && semverGt(a, b)
+}
+
+/** The portable exe can't replace itself: electron-builder's portable launcher sets this variable. */
+function isPortable() {
+  return !!process.env.PORTABLE_EXECUTABLE_FILE
+}
 
 /**
  * Only download asar file update.
@@ -197,7 +215,7 @@ async function downloadGzAsar(
 }
 
 async function hintUserDownload(): Promise<void> {
-  shell.openExternal('https://xmcl.app')
+  shell.openExternal(HORIZON_RELEASES_PAGE)
 }
 
 async function downloadAppInstaller(
@@ -256,27 +274,7 @@ async function downloadFullUpdate(
     abortSignal?: AbortSignal
   },
 ): Promise<void> {
-  const gfw = await app.registry.get(kGFW)
-
-  if (gfw.inside) {
-    // @ts-ignore
-    const executor = appUpdater.httpExecutor as any
-    if (!(kPatched in executor)) {
-      const createRequest = executor.createRequest.bind(executor)
-      Object.assign(executor, {
-        [kPatched]: true,
-        createRequest: (options: any, callback: any) => {
-          if (gfw.inside) {
-            options.hostname = 'files.0xc.cn'
-            options.pathname = `/Soft_Mirrors/github-release/Voxelum/x-minecraft-launcher/LatestRelease/${basename(options.pathname)}`
-            app.emit('download-cdn', 'electron', basename(options.pathname))
-          }
-          return createRequest(options, callback)
-        },
-      })
-    }
-  }
-
+  // Horizon Client: no mirror. XMCL sent requests from inside China to a mirror of XMCL's own releases.
   const tracker: ProgressTracker = {
     progress: 0,
     total: 0,
@@ -318,72 +316,43 @@ export class ElectronUpdater implements LauncherAppUpdater {
     this.logger = app.getLogger('ElectronUpdater')
   }
 
-  async #getUpdateFromSelfHost(): Promise<ReleaseInfo> {
+  /**
+   * Horizon Client: reads the newest release of {@link HORIZON_LAUNCHER_REPO} from GitHub's API, for builds that
+   * can't install it themselves (the portable exe, an unpacked build, macOS, an externally updated AppImage).
+   * The update is offered as a download page. XMCL asked its own server here and could swap in a new app.asar.
+   */
+  async #getUpdateFromGitHub(): Promise<ReleaseInfo> {
     const app = this.app
-    this.logger.log('Try get update from selfhost')
-    const { allowPrerelease, locale } = await app.registry.get(kSettings)
-    const queryString = `version=v${app.version}&prerelease=${allowPrerelease || false}`
-    const primary = await this.app
-      .fetch(`https://api.xmcl.app/latest?${queryString}`, {
-        headers: {
-          'Accept-Language': locale,
-        },
-      })
-      .catch(() => undefined)
-    // The Deno edge may return a regional 404. Fall back for any non-success
-    // response as well as a transport failure.
-    const response = primary?.ok
-      ? primary
-      : await this.app.fetch(`https://xmcl-core-api.azurewebsites.net/api/latest?${queryString}`, {
-        headers: {
-          'Accept-Language': locale,
-        },
-      })
+    this.logger.log(`Check update from GitHub releases of ${HORIZON_LAUNCHER_REPO}`)
+    const { allowPrerelease } = await app.registry.get(kSettings)
+    const api = `https://api.github.com/repos/${HORIZON_LAUNCHER_REPO}/releases`
+    const response = await app.fetch(allowPrerelease ? `${api}?per_page=10` : `${api}/latest`, {
+      headers: { Accept: 'application/vnd.github+json' },
+    })
     if (!response.ok) {
       throw new AnyError(
         'UpdateError',
-        `Fail to get update from selfhost: ${await response.text()}`,
+        `Fail to get update from GitHub: ${await response.text()}`,
         {},
         { status: response.status },
       )
     }
-    const result = (await response.json()) as any
-    const files = result.assets.map((a: any) => ({
+    const body = (await response.json()) as any
+    const result = Array.isArray(body) ? body.find((r: any) => !r.draft) : body
+    if (!result) throw new Error('No update info found')
+    const files = (result.assets ?? []).map((a: any) => ({
       url: a.browser_download_url,
       name: a.name,
     })) as Array<{ url: string; name: string }>
-    const platformString =
-      app.platform.os === 'windows' ? 'win' : app.platform.os === 'osx' ? 'mac' : 'linux'
-    const version = result.tag_name.substring(1)
     const updateInfo: ReleaseInfo = {
       name: result.tag_name,
-      body: result.body,
+      body: result.body ?? '',
       date: result.published_at,
       files,
-      newUpdate: !isSameVersion(app.version, result.tag_name),
+      newUpdate: isNewerVersion(result.tag_name, app.version),
       operation: ElectronUpdateOperation.Manual,
     }
-
-    const hasAsar = files.some((f) => f.name === `app-${version}-${platformString}.asar`)
-    if (this.app.platform.os === 'windows') {
-      if (this.app.env === 'appx') {
-        updateInfo.operation = ElectronUpdateOperation.Appx
-      } else {
-        updateInfo.operation = hasAsar
-          ? ElectronUpdateOperation.Asar
-          : ElectronUpdateOperation.Manual
-      }
-    } else if (this.app.platform.os === 'osx') {
-      updateInfo.operation = hasAsar ? ElectronUpdateOperation.Asar : ElectronUpdateOperation.Manual
-    } else {
-      updateInfo.operation =
-        hasAsar && this.app.env !== 'appimage'
-          ? ElectronUpdateOperation.Asar
-          : ElectronUpdateOperation.Manual
-    }
-
-    this.logger.log(`Got operation=${updateInfo.operation} update from selfhost`)
-
+    this.logger.log(`Latest release ${updateInfo.name} (new: ${updateInfo.newUpdate}), operation=manual`)
     return updateInfo
   }
 
@@ -400,7 +369,8 @@ export class ElectronUpdater implements LauncherAppUpdater {
       body: info.updateInfo.releaseNotes as string,
       date: info.updateInfo.releaseDate,
       files,
-      newUpdate: !isSameVersion(info.updateInfo.version, this.app.version),
+      // Horizon Client: electron-updater's own answer (a newer version only, no downgrades).
+      newUpdate: info.isUpdateAvailable ?? !isSameVersion(info.updateInfo.version, this.app.version),
       operation: ElectronUpdateOperation.AutoUpdater,
     }
 
@@ -487,10 +457,9 @@ export class ElectronUpdater implements LauncherAppUpdater {
   }
 
   async checkUpdateTask(): Promise<ReleaseInfo> {
-    // Horizon Client: no update feed yet. XMCL's feeds (api.xmcl.app, its GitHub releases) would offer
-    // XMCL's own builds, so updates are off. To turn them on, host Horizon Client releases, point
-    // `publish` in build/electron-builder.config.ts and #getUpdateFromSelfHost at them, and remove this.
-    if (!process.env.HORIZON_ENABLE_UPDATES) {
+    // Horizon Client: updates come from the GitHub releases of HORIZON_LAUNCHER_REPO. HORIZON_DISABLE_UPDATES
+    // turns them off (for test copies of the launcher).
+    if (process.env.HORIZON_DISABLE_UPDATES) {
       return {
         name: `v${this.app.version}`,
         body: '',
@@ -502,14 +471,17 @@ export class ElectronUpdater implements LauncherAppUpdater {
     }
     // External or unstable-path AppImages only discover release metadata:
     // checkForUpdates can start a download and register install-on-quit hooks.
-    if (await this.externallyUpdatedAppImage() || this.app.platform.os === 'windows' || this.app.platform.os === 'osx') {
-      return this.#getUpdateFromSelfHost()
+    // Horizon Client: the installed Windows build updates itself through electron-updater (latest.yml);
+    // the portable exe and macOS get a download page.
+    if (await this.externallyUpdatedAppImage() || this.app.platform.os === 'osx' || (this.app.platform.os === 'windows' && isPortable())) {
+      return this.#getUpdateFromGitHub()
     }
     try {
       return await this.#getUpdateFromAutoUpdater()
     } catch (e) {
+      // No app-update.yml: an unpacked or dev build.
       if (isSystemError(e) && e.code === 'ENOENT') {
-        return this.#getUpdateFromSelfHost()
+        return this.#getUpdateFromGitHub()
       }
       this.logger.warn(e as Error)
       throw e
@@ -561,6 +533,9 @@ export class ElectronUpdater implements LauncherAppUpdater {
     }
     if (updateInfo.operation === ElectronUpdateOperation.Asar) {
       await this.quitAndInstallAsar()
+    } else if (this.app.platform.os === 'windows') {
+      // Horizon Client: install without the installer's pages, then start the new version.
+      updater.autoUpdater.quitAndInstall(true, true)
     } else {
       updater.autoUpdater.quitAndInstall()
     }
