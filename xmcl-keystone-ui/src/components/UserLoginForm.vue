@@ -19,6 +19,19 @@
       </div>
     </div>
 
+    <v-alert
+      v-if="options?.notice"
+      density="compact"
+      variant="tonal"
+      color="warning"
+      icon="key"
+      rounded="lg"
+      class="text-left text-sm min-h-[min-content] mb-3 flex-grow-0"
+      data-testid="login-notice"
+    >
+      {{ options.notice }}
+    </v-alert>
+
     <UserLoginAuthoritySelect
       v-model="authority"
       class="flex-grow-0"
@@ -269,6 +282,8 @@ const props = defineProps<{
     microsoftUrl?: string
     authority?: string
     error?: string
+    /** Why this sign-in is asked for (an account whose saved sign-in was rejected). */
+    notice?: string
   }
 }>()
 

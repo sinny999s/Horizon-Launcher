@@ -14,6 +14,7 @@ import {
 import useSWRV from 'swrv'
 import { InjectionKey, Ref } from 'vue'
 import { useGlobalSettings, useSettingsState } from './setting'
+import { getUserRefreshFailure, useUserRefreshFailureHandler } from './userRefresh'
 import {
   isRuntimeServiceError,
   runRendererAction,
@@ -23,6 +24,14 @@ import {
 class LaunchStageCancelled extends Error {
   constructor() { super('Aborted') }
 }
+
+/** The account's saved Microsoft sign-in was rejected, so the launch stops and the login dialog asks for it. */
+class LaunchNeedsSignIn extends Error {
+  constructor() { super('The account needs to sign in again') }
+}
+
+/** How long a launch waits before its one retry when Minecraft's login answered 429. */
+const RATE_LIMIT_RETRY_DELAY = 15_000
 
 export const kInstanceLaunch: InjectionKey<ReturnType<typeof useInstanceLaunch>> =
   Symbol('InstanceLaunch')
@@ -45,6 +54,7 @@ export function useInstanceLaunch(
   mods: Ref<ModFile[]>,
 ) {
   const { refreshUser } = useService(UserServiceKey)
+  const onRefreshFailed = useUserRefreshFailureHandler()
   const { launch, kill, on, removeListener, getGameProcess, getGameProcesses } =
     useService(LaunchServiceKey)
   const { launch: launchBedrock } = useService(BedrockServiceKey)
@@ -261,13 +271,24 @@ export function useInstanceLaunch(
       // startup refresh, and refreshUser is a no-op when the token isn't
       // close to expiry. Only ping Mojang's joinServer to validate when
       // the slow asset check is also enabled — fast launch keeps fast.
+      // Silent: the saved Microsoft sign-in is used without a window. If
+      // Microsoft rejects it, the launch stops and asks for a sign-in (a game
+      // started with a dead token can't join servers). A 429 from Minecraft's
+      // login is tried once more after a wait; other failures launch anyway
+      // (offline play) and say so when the old token had already expired.
       if (user.id && side === 'client') {
+        const before = user
+        const refresh = () => refreshUser(user.id, { validate: !options.skipAssetsCheck, silent: true })
         try {
           await track(
             action,
             token,
             () =>
-              refreshUser(user.id, { validate: !options.skipAssetsCheck }).then(
+              refresh().catch(async (e) => {
+                if (getUserRefreshFailure(e) !== 'rate-limited') throw e
+                await new Promise(resolve => setTimeout(resolve, RATE_LIMIT_RETRY_DELAY))
+                return refresh()
+              }).then(
                 (profile: UserProfile) => {
                   user = profile
                 },
@@ -276,7 +297,15 @@ export function useInstanceLaunch(
             state,
           )
         } catch (e) {
-          if (!(e instanceof LaunchStageCancelled) && !state.aborted && !isRuntimeServiceError(e)) console.error(e)
+          if (!(e instanceof LaunchStageCancelled) && !state.aborted) {
+            const failure = getUserRefreshFailure(e)
+            if (failure === 'sign-in') {
+              onRefreshFailed(before, e)
+              throw new LaunchNeedsSignIn()
+            }
+            if (before.expiredAt <= Date.now()) onRefreshFailed(before, e)
+            if (!isRuntimeServiceError(e)) console.error(e)
+          }
         }
       }
 
@@ -334,6 +363,8 @@ export function useInstanceLaunch(
       return { operationId }
     } catch (e) {
       if (state.aborted) return
+      // Already handled: the login dialog is open for this account.
+      if (e instanceof LaunchNeedsSignIn) return
       if (!(e instanceof LaunchStageCancelled) && !state.aborted && !isRuntimeServiceError(e)) console.error(e)
       if (allLaunchingStatus.value[token] === state) error.value = e as any
       throw e

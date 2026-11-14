@@ -1,4 +1,4 @@
-import { AUTHORITY_MICROSOFT, AuthorityMetadata, GameProfileAndTexture, LoginOptions, RefreshUserOptions, Skin, SkinPayload, UserException, UserProfile, normalizeUserId } from '@xmcl/runtime-api'
+import { AUTHORITY_MICROSOFT, AuthorityMetadata, GameProfileAndTexture, LoginOptions, RefreshUserOptions, Skin, SkinPayload, UserException, UserProfile, isUserTokenExpiring, normalizeUserId } from '@xmcl/runtime-api'
 import { MicrosoftAuthenticator, MicrosoftMinecraftProfile, MicrosoftMinecraftXboxLoginError, MojangClient, MojangError } from '@xmcl/user'
 import { randomUUID } from 'crypto'
 import { LauncherApp } from '~/app'
@@ -52,12 +52,19 @@ export class MicrosoftAccountSystem implements UserAccountSystem {
       profiles: toRecord(authentication.gameProfiles, p => p.id),
       selectedProfile: authentication.selectedProfile?.id ?? '',
       avatar: authentication.avatar,
+      homeAccountId: authentication.homeAccountId,
     }
     const userTokenStorage = await this.getUserTokenStorage()
     await userTokenStorage.put(profile, authentication.accessToken)
     return profile
   }
 
+  /**
+   * Gets a new Minecraft token when the saved one is invalidated, expired or about to expire, or failed validation.
+   * The saved Microsoft sign-in (WAM or MSAL's cache) is used silently; with `silent` unset, a rejected one falls
+   * back to an interactive sign-in. A failure marks the profile invalidated and throws `userAccessTokenExpired` with
+   * the reason, so callers can ask for a sign-in only when one is needed.
+   */
   async refresh(user: UserProfile, signal: AbortSignal, { silent, force, validate }: RefreshUserOptions): Promise<UserProfile> {
     const diff = Date.now() - user.expiredAt
     this.logger.log(`Try to refresh Microsoft account ${user.username}(${user.id}) token. Expired at ${user.expiredAt}, validate: ${validate}, force: ${force}, diff: ${diff}, silent: ${silent}`)
@@ -80,17 +87,18 @@ export class MicrosoftAccountSystem implements UserAccountSystem {
       this.logger.log(`Validate Microsoft account ${user.username}(${user.id}) token. Response: ${response.status}`)
       return !response.ok
     }
-    if (force || !user.expiredAt || diff > 0 || (diff / 1000 / 3600 / 24) > 14 || user.invalidated || await isExpired()) {
-      // expired
-      this.logger.log('Microsoft accessToken expired. Refresh a new one.')
+    if (force || isUserTokenExpiring(user) || await isExpired()) {
+      // expired, or expires within USER_TOKEN_REFRESH_MARGIN
+      this.logger.log('Microsoft accessToken expired or expiring. Refresh a new one.')
       try {
-        const { accessToken, expiredAt, gameProfiles, selectedProfile, username } = await this.loginMicrosoft(user.username, undefined, false, true, signal, silent)
+        const { accessToken, expiredAt, gameProfiles, selectedProfile, username, homeAccountId } = await this.loginMicrosoft(user.username, undefined, false, true, signal, silent, user.homeAccountId)
 
         user.username = username || user.username
         user.expiredAt = expiredAt
         user.selectedProfile = selectedProfile?.id ?? ''
         user.profiles = toRecord(gameProfiles, v => v.id)
         user.invalidated = false
+        if (homeAccountId) user.homeAccountId = homeAccountId
         const userTokenStorage = await this.getUserTokenStorage()
         await userTokenStorage.put(user, accessToken)
       } catch (e) {
@@ -105,6 +113,8 @@ export class MicrosoftAccountSystem implements UserAccountSystem {
         // overwritten with a fresh one (or the user re-logs in via the
         // login flow, which calls userTokenStorage.put as well).
         user.invalidated = true
+        throw new UserException({ type: 'userAccessTokenExpired', reason: getRefreshFailureReason(e) },
+          'Failed to refresh the Microsoft account', { cause: e })
       }
     }
 
@@ -185,7 +195,7 @@ export class MicrosoftAccountSystem implements UserAccountSystem {
     return userProfile
   }
 
-  protected async loginMicrosoft(microsoftEmailAddress: string, oauthCode: string | undefined, useDeviceCode: boolean, directRedirectToLauncher: boolean, signal: AbortSignal, slientOnly = false) {
+  protected async loginMicrosoft(microsoftEmailAddress: string, oauthCode: string | undefined, useDeviceCode: boolean, directRedirectToLauncher: boolean, signal: AbortSignal, slientOnly = false, homeAccountId?: string) {
     // XErr codes from XSTS /authorize that are "user state, not a bug" --
     // child account, missing Xbox profile, age/region issues, banned, etc.
     // See issue #1445. We still throw a UserException so the UI can deep-link
@@ -262,6 +272,7 @@ export class MicrosoftAccountSystem implements UserAccountSystem {
       useNativeBroker: this.app.platform.os === 'windows',
       signal,
       slientOnly,
+      homeAccountId,
     }).catch((e) => {
       logError(e)
       throw new UserException({
@@ -374,6 +385,7 @@ export class MicrosoftAccountSystem implements UserAccountSystem {
       }]
       return {
         username: result.account?.username,
+        homeAccountId: result.account?.homeAccountId,
         userId: mcResponse.username,
         accessToken: mcResponse.access_token,
         gameProfiles,
@@ -406,4 +418,30 @@ export class MicrosoftAccountSystem implements UserAccountSystem {
       avatar,
     }
   }
+}
+
+/**
+ * Sorts a failed refresh into what the user can do about it. A Microsoft token that can't be had without
+ * interaction (the account is gone from the broker or cache, needs consent, was revoked, or its picker was closed)
+ * needs a new sign-in. A 429 from Minecraft's login passes after a wait, and an unreachable server after the
+ * network is back. Anything else (an Xbox account problem, an unexpected answer) has no reason.
+ */
+export function getRefreshFailureReason(error: unknown): 'SIGN_IN_REQUIRED' | 'RATE_LIMITED' | 'NETWORK_ERROR' | undefined {
+  const exception = (error as UserException | undefined)?.exception
+  if (exception?.type === 'userAcquireMicrosoftTokenFailed') {
+    if (exception.reason === 'NETWORK_ERROR') return 'NETWORK_ERROR'
+    if (exception.reason === 'USER_CANCELED') return 'SIGN_IN_REQUIRED'
+    const cause = (error as { cause?: any }).cause
+    if (cause?.name === 'AbortError') return undefined
+    if (cause?.name === 'MicrosoftOAuthSlientFailed' || cause?.name === 'MicrosoftOAuthAccountMismatch') return 'SIGN_IN_REQUIRED'
+    const code = `${cause?.errorCode ?? ''} ${cause?.message ?? ''}`
+    if (/\b(interaction_required|invalid_grant|login_required|consent_required|no_account_found|no_tokens_found)\b/.test(code)) return 'SIGN_IN_REQUIRED'
+    return undefined
+  }
+  if (exception?.type === 'userLoginMinecraftByXboxFailed') {
+    if (exception.status === 429) return 'RATE_LIMITED'
+    return undefined
+  }
+  if (isNetworkError(error)) return 'NETWORK_ERROR'
+  return undefined
 }

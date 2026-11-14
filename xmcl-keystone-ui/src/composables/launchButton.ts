@@ -189,8 +189,8 @@ export function useLaunchButton() {
       if (javaIssue.value) {
         showLaunchStatusDialog({ javaIssue: javaIssue.value })
       } else {
-        await launch('client', undefined, action)
-        showLaunchStatusDialog()
+        // Nothing to show when the launch stopped early (e.g. to sign the account in again).
+        if (await launch('client', undefined, action)) showLaunchStatusDialog()
       }
     },
   })
@@ -315,8 +315,7 @@ export function useLaunchButton() {
               if (javaIssue.value) {
                 showLaunchStatusDialog({ javaIssue: javaIssue.value })
               } else {
-                await launch('client', undefined, action)
-                showLaunchStatusDialog()
+                if (await launch('client', undefined, action)) showLaunchStatusDialog()
               }
             },
           }
@@ -358,8 +357,7 @@ export function useLaunchButton() {
             if (javaIssue.value) {
               showLaunchStatusDialog({ javaIssue: javaIssue.value })
             } else {
-              await launch('client', undefined, action)
-              showLaunchStatusDialog()
+              if (await launch('client', undefined, action)) showLaunchStatusDialog()
             }
           },
         }

@@ -1,10 +1,11 @@
-import { computed, InjectionKey, reactive, Ref, toRefs } from 'vue'
+import { computed, InjectionKey, reactive, ref, Ref, toRefs } from 'vue'
 import { GameProfileAndTexture, OfficialUserServiceKey, UserProfile, UserServiceKey, UserState } from '@xmcl/runtime-api'
 
 import { useService } from '@/composables'
 import { useLocalStorage } from '@vueuse/core'
 import { useState } from './syncableState'
 import { GameProfile } from '@xmcl/user'
+import { shouldRefreshOnSwitch, useUserRefreshFailureHandler } from './userRefresh'
 
 const NO_USER_PROFILE: UserProfile = Object.freeze({
   selectedProfile: '',
@@ -23,7 +24,7 @@ const NO_GAME_PROFILE: GameProfileAndTexture = Object.freeze({
 export const kUserContext: InjectionKey<ReturnType<typeof useUserContext>> = Symbol('UserContext')
 
 export function useUserContext() {
-  const { getUserState } = useService(UserServiceKey)
+  const { getUserState, refreshUser } = useService(UserServiceKey)
   const { state, isValidating, error } = useState(getUserState, class extends UserState {
     override gameProfileUpdate({ profile, userId }: { userId: string; profile: (GameProfileAndTexture | GameProfile) }) {
       const userProfile = this.users[userId]
@@ -61,6 +62,7 @@ export function useUserContext() {
           username: user.username,
           selectedProfile: user.selectedProfile,
           invalidated: user.invalidated,
+          homeAccountId: user.homeAccountId ?? current.homeAccountId,
         }
       } else {
         this.users[user.id] = user
@@ -71,16 +73,39 @@ export function useUserContext() {
   const userProfile: Ref<UserProfile> = computed(() => state.value?.users[selectedUserId.value] ?? NO_USER_PROFILE)
   const gameProfile: Ref<GameProfileAndTexture> = computed(() => userProfile.value.profiles[userProfile.value.selectedProfile] ?? NO_GAME_PROFILE)
   const users = computed(() => Object.values(state.value?.users || {}))
-  const select = (id: string) => {
-    selectedUserId.value = id
+
+  // Switching to an account whose Minecraft token is expired or about to expire refreshes it silently with the
+  // saved Microsoft sign-in, as a launch would. Only a rejected sign-in asks the user to sign in again.
+  const refreshingUserId = ref('')
+  const onRefreshFailed = useUserRefreshFailureHandler()
+  async function refreshOnSwitch(id: string) {
+    const user = state.value?.users[id]
+    if (!user || !shouldRefreshOnSwitch(user)) return
+    refreshingUserId.value = id
+    try {
+      await refreshUser(id, { silent: true })
+    } catch (e) {
+      // Only bother the user about the account they are still on.
+      if (selectedUserId.value === id) onRefreshFailed(state.value?.users[id] ?? user, e)
+    } finally {
+      if (refreshingUserId.value === id) refreshingUserId.value = ''
+    }
   }
 
+  /** Selects an account, refreshing its token first when it expired or expires soon. */
+  const select = (id: string) => {
+    selectedUserId.value = id
+    void refreshOnSwitch(id)
+  }
+
+  // Falling back to the first account (none selected yet, or the selected one was removed) is not a switch the
+  // user asked for, so it doesn't refresh or prompt: startup and the next launch refresh it.
   watch(userProfile, (profile) => {
     if (profile === NO_USER_PROFILE) {
       // Select the first user
       const first = users.value[0]
       if (first) {
-        select(first.id)
+        selectedUserId.value = first.id
       }
     }
   }, { immediate: true })
@@ -91,7 +116,7 @@ export function useUserContext() {
       // Select the first user
       const first = users.value[0]
       if (first) {
-        select(first.id)
+        selectedUserId.value = first.id
       }
     }
   })
@@ -101,6 +126,7 @@ export function useUserContext() {
     isValidating,
     error,
     select,
+    refreshingUserId,
     userProfile,
     gameProfile }
 }

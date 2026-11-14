@@ -6,6 +6,7 @@ import {
   Users,
   UserServiceKey,
   UserState,
+  isException,
   type AuthorityMetadata,
   type UserService as IUserService,
   type LoginOptions,
@@ -87,20 +88,33 @@ export class UserService extends StatefulService<UserState> implements IUserServ
 
       // Refresh all users without blocking the initial state. The renderer must
       // be able to show persisted users even if a refresh stalls or fails.
-      void Promise.all(Object.values(userData.users as Record<string, UserProfile>).map((user) => {
-        if (user.username) {
-          return this.refreshUser(user.id, {
-            silent: true,
-            validate: true,
-          }).catch((e) => {
-            this.log(`Failed to refresh user ${user.id}`, e)
-          })
-        } else {
+      // One at a time: Minecraft's login_with_xbox answers 429 to the fourth
+      // login in a burst, which left that account looking signed out. After a
+      // 429 the rest wait for a switch or a launch, which refresh them anyway.
+      const users = Object.values(userData.users as Record<string, UserProfile>)
+      for (const user of users) {
+        if (!user.username) {
           // This is startup cleanup, not a user-requested logout. It must
           // not grant permission to replace a valid profile with empty data.
           this.state.userProfileRemove(user.id)
         }
-      }))
+      }
+      void (async () => {
+        for (const user of users) {
+          if (!user.username || !this.state.users[user.id]) continue
+          const rateLimited = await this.refreshUser(user.id, {
+            silent: true,
+            validate: true,
+          }).then(() => false, (e) => {
+            this.log(`Failed to refresh user ${user.id}`, e)
+            return isException(UserException, e) && e.exception.type === 'userAccessTokenExpired' && e.exception.reason === 'RATE_LIMITED'
+          })
+          if (rateLimited) {
+            this.log('Minecraft login is rate limited. The other accounts refresh when switched to or launched.')
+            break
+          }
+        }
+      })()
     })
 
     this.userJsonPath = this.getAppDataPath('user.json')
@@ -277,7 +291,12 @@ export class UserService extends StatefulService<UserState> implements IUserServ
     const system = await this.resolveAccountSystem(user.authority)
     this.refreshController = new AbortController()
 
-    const newUser = await system.refresh(user, this.refreshController.signal, options).finally(() => {
+    const newUser = await system.refresh(user, this.refreshController.signal, options).catch((e) => {
+      // A failed refresh may have marked the profile invalidated: publish that
+      // so the renderer shows it, then let the caller see the reason.
+      if (this.state.users[userId]) this.state.userProfile(user)
+      throw e
+    }).finally(() => {
       this.refreshController = undefined
     })
 

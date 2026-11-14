@@ -9,7 +9,7 @@ import type { MicrosoftAuthTelemetryEvent } from '~/app'
 import { SecretStorage } from '~/app/SecretStorage'
 import { Logger } from '~/infra'
 import { createPlugin } from '../credentialPlugin'
-import { isNetworkError, isUserCanceledError } from './MicrosoftAuthErrors'
+import { isNetworkError, isTransientAuthError, isUserCanceledError } from './MicrosoftAuthErrors'
 import { createNetworkClient } from './OAuthNetworkClient'
 
 export const MICROSOFT_GRAPH_USER_READ_SCOPE = 'User.Read'
@@ -44,6 +44,12 @@ interface AuthenticateOptions {
   useDeviceCode?: boolean
   code?: string
   slientOnly?: boolean
+  /**
+   * The MSAL home account id saved with the profile. Found first, because the
+   * broker may list the account under another of its email aliases than the one
+   * the user typed (or that a sign-in returned), which the username match misses.
+   */
+  homeAccountId?: string
   extraScopes?: string[]
   directRedirectToLauncher?: boolean
   useNativeBroker?: boolean
@@ -82,6 +88,19 @@ function getSafeErrorProperties(error: unknown) {
     result.subError = subError
   }
   return result
+}
+
+/**
+ * The cached or broker account for a saved profile: by its home account id when the profile has one, else by
+ * username (case-insensitive).
+ */
+export function findAccount(accounts: AccountInfo[], username: string, homeAccountId?: string): AccountInfo | undefined {
+  if (homeAccountId) {
+    const byId = accounts.find(value => value.homeAccountId === homeAccountId)
+    if (byId) return byId
+  }
+  const name = username.toLowerCase()
+  return accounts.find(value => value.username.toLowerCase() === name)
 }
 
 export class MicrosoftOAuthClient {
@@ -180,6 +199,7 @@ export class MicrosoftOAuthClient {
   private async acquireSilently(
     app: PublicClientApplication,
     username: string,
+    homeAccountId: string | undefined,
     scopes: string[],
     extraScopes: string[] | undefined,
   ): Promise<SilentAuthentication> {
@@ -187,7 +207,7 @@ export class MicrosoftOAuthClient {
       this.logger.warn(`Microsoft account lookup failed: ${JSON.stringify(getSafeErrorProperties(error))}`)
       return []
     })
-    const account = accounts.find(value => value.username.toLowerCase() === username.toLowerCase())
+    const account = findAccount(accounts, username, homeAccountId)
     if (!account) {
       this.logger.warn(`Microsoft silent token acquisition missed: no matching account (accountCount=${accounts.length}).`)
       return {}
@@ -199,6 +219,9 @@ export class MicrosoftOAuthClient {
       forceRefresh: false,
     }).catch((error) => {
       this.logger.warn(`Microsoft silent token acquisition missed: ${JSON.stringify(getSafeErrorProperties(error))}`)
+      // Offline or a server outage: the saved sign-in may be fine, so report that instead of falling through to an
+      // interactive sign-in (or, for a silent refresh, to "sign in again").
+      if (isTransientAuthError(error)) throw error
       return null
     })
     if (!result) return { account }
@@ -380,10 +403,11 @@ export class MicrosoftOAuthClient {
       )
       let account: AccountInfo | undefined
       const allowSilentReuse = options.slientOnly || !options.useDeviceCode
-      if (username && !options.code && allowSilentReuse) {
+      if ((username || options.homeAccountId) && !options.code && allowSilentReuse) {
         const silent = await this.acquireSilently(
           app,
           username,
+          options.homeAccountId,
           scopes,
           options.extraScopes,
         )

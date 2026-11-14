@@ -128,6 +128,7 @@ export class UserState {
       current.username = user.username
       current.selectedProfile = user.selectedProfile
       current.invalidated = user.invalidated
+      if (user.homeAccountId) current.homeAccountId = user.homeAccountId
     } else {
       this.users[user.id] = user
     }
@@ -301,6 +302,14 @@ export type UserExceptions = {
   developerMessage: string
 } | {
   type: 'userAccessTokenExpired'
+  /**
+   * Why a refresh failed, when it is known:
+   * - `SIGN_IN_REQUIRED`: the saved Microsoft sign-in was rejected (expired, revoked or needs consent), so only a new
+   *   sign-in fixes it.
+   * - `RATE_LIMITED`: Minecraft's login endpoint answered 429. Trying again in a minute works.
+   * - `NETWORK_ERROR`: Microsoft or Minecraft could not be reached.
+   */
+  reason?: 'SIGN_IN_REQUIRED' | 'RATE_LIMITED' | 'NETWORK_ERROR'
 } | {
   type: 'userSetSkinFailed'
   reason: 'INVALID_IMAGE' | 'REQUEST_REJECTED'
@@ -309,4 +318,8 @@ export type UserExceptions = {
   authority: string
 }
 
-export class UserException extends Exception<UserExceptions> { }
+export class UserException extends Exception<UserExceptions> {
+  // The renderer bundle turns this class into an anonymous `class extends` expression, so its `.name` is not
+  // "UserException" there and `isException(UserException, e)` would never match an error from the main process.
+  static readonly exceptionName = 'UserException'
+}

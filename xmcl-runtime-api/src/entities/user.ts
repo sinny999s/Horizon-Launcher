@@ -8,6 +8,17 @@ export interface UserGameProfile extends Omit<UserProfile, 'profiles'>, GameProf
 export const EMPTY_USER = Object.freeze({ id: '', username: '', profileService: '', authService: '', accessToken: '', profiles: [], properties: {} })
 export const EMPTY_GAME_PROFILE = Object.freeze({ id: '', name: '', textures: { SKIN: { url: '' } } })
 
+/**
+ * How long before its expiry a Minecraft access token is already refreshed (at startup, on an account switch and
+ * before a launch), so a game started now still has a valid token when it joins a server hours later.
+ */
+export const USER_TOKEN_REFRESH_MARGIN = 2 * 60 * 60 * 1000
+
+/** Whether an account's token is invalidated, expired or expires within {@link USER_TOKEN_REFRESH_MARGIN}. */
+export function isUserTokenExpiring(user: Pick<UserProfile, 'expiredAt' | 'invalidated'>, now = Date.now()) {
+  return !!user.invalidated || !user.expiredAt || user.expiredAt - now < USER_TOKEN_REFRESH_MARGIN
+}
+
 export function normalizeUserId(userId: string, authority: string) {
   try {
     // eslint-disable-next-line no-new

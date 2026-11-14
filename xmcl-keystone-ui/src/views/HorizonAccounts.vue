@@ -32,9 +32,14 @@
             <small>{{ e.user.username }}</small>
           </div>
           <span class="hz-chip">{{ authorityName(e.user.authority) }}</span>
-          <span v-if="isExpired(e.user)" class="hz-chip red">Sign in again</span>
+          <span v-if="refreshingUserId === e.user.id" class="hz-chip">Signing in…</span>
+          <span
+            v-else-if="isExpired(e.user)"
+            class="hz-chip red"
+            title="Its Minecraft token expired. It signs in again by itself when you switch to it or press Play."
+          >Expired</span>
           <span v-if="e.isCurrent" class="hz-chip green">In use</span>
-          <v-progress-circular v-if="selecting === e.key" indeterminate :size="16" :width="2" />
+          <v-progress-circular v-if="selecting === e.key || refreshingUserId === e.user.id" indeterminate :size="16" :width="2" />
           <button
             type="button"
             class="hz-mini"
@@ -69,7 +74,7 @@ import { injection } from '@/util/inject'
 import { AUTHORITY_DEV, AUTHORITY_MICROSOFT, AUTHORITY_MOJANG, GameProfileAndTexture, UserProfile, UserServiceKey } from '@xmcl/runtime-api'
 import MeProfilePanel from './MeProfilePanel.vue'
 
-const { users, userProfile, select } = injection(kUserContext)
+const { users, userProfile, select, refreshingUserId } = injection(kUserContext)
 const { selectUserGameProfile, removeUser, removeUserGameProfile } = useService(UserServiceKey)
 const { show: showUserProfileDialog } = useUserMenuControl()
 
@@ -92,7 +97,12 @@ function isExpired(u: UserProfile) {
 
 const selecting = ref('')
 async function choose(e: Entry) {
-  if (e.isCurrent || selecting.value) return
+  if (selecting.value) return
+  // The account in use: clicking it again refreshes it when it has expired.
+  if (e.isCurrent) {
+    if (isExpired(e.user) && !refreshingUserId.value) select(e.user.id)
+    return
+  }
   selecting.value = e.key
   try {
     if (e.profile && e.user.selectedProfile !== e.profile.id) await selectUserGameProfile(e.user, e.profile.id)

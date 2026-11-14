@@ -88,6 +88,22 @@ The repo pins pnpm 11.10.0 and its scripts call `pnpm` again, so a global pnpm 1
   `{ "mods": [{ "minecraft": "26.3", "version": "2.0.5", "url": "https://.../horizon-26.3-2.0.5.jar", "sha1": "..." }] }`.
   The launcher then downloads Horizon from there. The bundled jar is only the fallback.
 
+**Accounts stay signed in** (`xmcl-runtime/user/`, `xmcl-keystone-ui/src/composables/user.ts`, `userRefresh.ts`)
+- Switching accounts (any account picker) and pressing Play refresh the account's Minecraft token silently when it is
+  expired, invalidated or expires within 2 hours (`USER_TOKEN_REFRESH_MARGIN`), with the saved Microsoft sign-in
+  (Windows' account broker, WAM). XMCL refreshed only at startup and before a launch, and its launch opened the
+  broker's account picker when the silent refresh missed.
+- The broker account is found by its MSAL home account id (`homeAccountId`, now kept in `user.json`), then by email.
+  By email alone it missed an account that the broker lists under another of its aliases.
+- Only when Microsoft rejects the saved sign-in (interaction required, revoked, account gone from the broker) does it
+  ask: the login dialog opens with the email filled in and a note saying why, and a launch stops instead of starting a
+  game that can't join servers. A 429 from Minecraft's login or being offline is a notification instead (a launch
+  waits 15 s and tries once more after a 429, then launches anyway).
+- Startup refreshes the accounts one at a time and stops after a 429 (Minecraft answers 429 to the fourth login in a
+  burst, which used to leave that account looking signed out); the rest refresh when switched to or launched.
+- `UserException` has a static `exceptionName`: the renderer bundle turns the class into an anonymous class
+  expression, which broke every `isException(UserException, …)` check in the renderer.
+
 **Import from XMCL** (`xmcl-electron-app/main/xmclImport.ts`)
 - On the first start it finds XMCL's data (the normal `%APPDATA%\xmcl` or the Microsoft Store one in
   `%LOCALAPPDATA%\Packages\xmcl_*\LocalCache\Roaming\xmcl`) and copies:

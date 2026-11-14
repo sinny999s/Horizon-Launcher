@@ -84,6 +84,8 @@ export const UserProfileCompatible = z.object({
   selectedProfile: z.string().catch(''),
   /** The avatar uri. This can be base64 data uri. */
   avatar: z.string().optional().catch(undefined),
+  /** MSAL / OIDC home account id, used to find the account again for a silent refresh */
+  homeAccountId: z.string().optional().catch(undefined),
 })
 
 export type UserProfileCompatible = z.infer<typeof UserProfileCompatible>

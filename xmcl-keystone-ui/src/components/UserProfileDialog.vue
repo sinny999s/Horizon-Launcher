@@ -46,6 +46,7 @@
 
 <script lang="ts" setup>
 import { useService } from "@/composables";
+import { useUserMenuControl } from "@/composables/userMenu";
 import { UserServiceKey } from "@xmcl/runtime-api";
 import UserCardAddYggdrasilService from "./UserCardAddYggdrasilService.vue";
 import UserLoginForm from "./UserLoginForm.vue";
@@ -62,6 +63,14 @@ const { abortLogin } = useService(UserServiceKey);
 
 const options = ref(undefined as any);
 const addService = ref(false);
+const { signInRequest } = useUserMenuControl();
+
+// Signing an account in again: fill in its email and say why.
+watch([isShown, signInRequest], ([shown, request]) => {
+  if (shown && request) {
+    options.value = { username: request.username, authority: request.authority, notice: request.notice };
+  }
+}, { immediate: true });
 
 const onLogin = () => {
   options.value = undefined;
@@ -80,6 +89,7 @@ watch(isShown, (v) => {
   if (!v) {
     addService.value = false;
     options.value = undefined;
+    signInRequest.value = undefined;
     // Dismissing the dialog while a login (e.g. device code / OAuth flow)
     // is in-flight would otherwise leave the backend login blocked
     // waiting for user interaction that will never come. Abort it so
