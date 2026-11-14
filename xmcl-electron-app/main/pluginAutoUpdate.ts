@@ -11,7 +11,13 @@ export const pluginAutoUpdate: LauncherAppPlugin = async (app) => {
   }
   // Horizon Client: electron-updater's own log lines go to the launcher's log.
   const logger = app.getLogger('AutoUpdater')
-  autoUpdater.logger = { info: (m: any) => logger.log(m), warn: (m: any) => logger.warn(m), error: (m: any) => logger.error(m), debug: () => { } }
+  // Its errors are mostly strings, and the launcher's logger.error only prints Errors.
+  autoUpdater.logger = {
+    info: (m: any) => logger.log(m),
+    warn: (m: any) => logger.warn(m),
+    error: (m: any) => m instanceof Error ? logger.error(m) : logger.warn(`Error: ${m}`),
+    debug: () => { },
+  }
   // Horizon Client: only the full installer is published, never a web installer.
   autoUpdater.disableWebInstaller = true
   // Horizon Client: HORIZON_UPDATE_URL points the updater at another feed (a folder with latest.yml), for testing.
