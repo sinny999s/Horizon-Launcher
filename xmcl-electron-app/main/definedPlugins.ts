@@ -40,6 +40,7 @@ import { pluginRestoreMaintenance } from '@xmcl/runtime/infra/pluginRestoreMaint
 import { pluginSettings } from '@xmcl/runtime/settings/pluginSettings'
 import { pluginSetup } from '@xmcl/runtime/setup/pluginSetup'
 import { pluginModrinthAccess } from '@xmcl/runtime/user/pluginModrinthAccess'
+import { pluginGameAccounts } from '@xmcl/runtime/horizon/pluginGameAccounts'
 import { pluginOfficialUserApi } from '@xmcl/runtime/user/pluginOfficialUserApi'
 import { pluginOffineUser } from '@xmcl/runtime/user/pluginOfflineUser'
 import { pluginUserTokenStorage } from '@xmcl/runtime/user/pluginUserTokenStorage'
@@ -92,6 +93,7 @@ export const definedPlugins: LauncherAppPlugin[] = [
   pluginUserTokenStorage,
   pluginOfficialUserApi,
   pluginOffineUser,
+  pluginGameAccounts,
   pluginUndiciLogger,
 
   pluginModrinthAccess,

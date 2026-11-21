@@ -3,7 +3,7 @@
     "productName": "Horizon Client",
     "private": true,
     "main": "./index.js",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "author": "Horizon (based on X Minecraft Launcher by ci010)",
     "description": "Horizon Client - a Minecraft 26.3+ Fabric launcher for the Horizon mod, based on X Minecraft Launcher (MIT)",
     "license": "MIT",

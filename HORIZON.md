@@ -104,6 +104,20 @@ The repo pins pnpm 11.10.0 and its scripts call `pnpm` again, so a global pnpm 1
 - `UserException` has a static `exceptionName`: the renderer bundle turns the class into an anonymous class
   expression, which broke every `isException(UserException, …)` check in the renderer.
 
+**The game can switch accounts** (`xmcl-runtime/horizon/gameAccounts.ts`, `pluginGameAccounts.ts`)
+- The Horizon mod's title screen has an Accounts screen that plays as another account without a restart. For a game
+  this launcher started it lists the launcher's Microsoft accounts too, and switching to one needs no second sign-in:
+  the game asks the launcher for that account's Minecraft token.
+- A game is started with `HORIZON_LAUNCHER_BRIDGE` (`http://127.0.0.1:<port>/horizon/accounts`, on the launcher's own
+  localhost server) and `HORIZON_LAUNCHER_BRIDGE_KEY` (random, new each time the launcher starts). `GET` lists the
+  accounts (id, profile id, name, skin; no email, no token); `POST .../token` with `{ "id" }` answers with the
+  account's Minecraft token, after renewing it quietly (`refreshUser` with `silent` and `validate`, as before a launch)
+  when it has expired or Minecraft no longer takes it.
+- Only requests from this computer that carry the key are answered (the launcher's server listens on every
+  interface). An account whose quiet sign-in Microsoft turns down answers `sign_in_required`, and the game tells the
+  player to sign in again here; a 429 from Minecraft answers `rate_limited`, no network `offline`.
+- The launcher's own selected account doesn't change when the game switches.
+
 **Import from XMCL** (`xmcl-electron-app/main/xmclImport.ts`)
 - On the first start it finds XMCL's data (the normal `%APPDATA%\xmcl` or the Microsoft Store one in
   `%LOCALAPPDATA%\Packages\xmcl_*\LocalCache\Roaming\xmcl`) and copies:

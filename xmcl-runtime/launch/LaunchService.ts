@@ -1,5 +1,6 @@
 import { recoverRestore } from '~/infra/recoverRestore'
 import { updateHorizonMod } from '~/horizon/horizonMods'
+import { BRIDGE_KEY_ENV, gameAccountsEnv } from '~/horizon/gameAccounts'
 import { getRestoreGate } from '~/infra/restoreGate'
 import { MinecraftFolder, type LaunchOption as ResolvedLaunchOptions, type ResolvedVersion, type ServerOptions, type ResolvedServerVersion, createMinecraftProcessWatcher, generateArguments, generateArgumentsServer, launch, launchServer } from '@xmcl/core'
 import { AUTHORITY_DEV, type CreateLaunchShortcutOptions, type GameProcess, type LaunchService as ILaunchService, LaunchException, type LaunchOptions, LaunchServiceKey } from '@xmcl/runtime-api'
@@ -229,7 +230,8 @@ export class LaunchService extends AbstractService implements ILaunchService {
         shell: prepend && prepend.length > 0,
         detached: true,
         cwd: minecraftFolder.root,
-        env: { ...process.env, ...options.env },
+        // Horizon Client: the game is told where to ask for the launcher's accounts (horizon/gameAccounts.ts).
+        env: { ...process.env, ...options.env, ...(await gameAccountsEnv()) },
       },
       extraJVMArgs: options.vmOptions?.filter(v => !!v),
       extraMCArgs: options.mcOptions?.filter(v => !!v),
@@ -481,7 +483,8 @@ export class LaunchService extends AbstractService implements ILaunchService {
         }
 
         this.log('Launching client with these option...')
-        this.log(JSON.stringify(op, (k, v) => (k === 'accessToken' ? '***' : v), 2))
+        // Horizon Client: the options carry the game's environment, and with it the account bridge's key.
+        this.log(JSON.stringify(op, (k, v) => (k === 'accessToken' || k === BRIDGE_KEY_ENV ? '***' : v), 2))
         try {
           process = await this.#track(() => launch(op), 'spawn_process')
         } catch (e) {
